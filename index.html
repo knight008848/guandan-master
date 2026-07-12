@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>掼蛋大师 - 网页版对战游戏</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- 顶部状态栏 -->
+  <header class="header-bar">
+    <div class="logo">掼蛋大师</div>
+    <div class="game-info">
+      <div class="info-pill">
+        <span>当前主牌:</span>
+        <span id="current-rank-label" class="highlight">2</span>
+      </div>
+      <div class="info-pill">
+        <span>红心逢人配:</span>
+        <span class="highlight" style="color: #ff5252;">♥<span id="wild-card-label">2</span></span>
+      </div>
+      <div class="info-pill">
+        <span>我方级别:</span>
+        <span id="our-level" class="highlight">2</span>
+        <span> | 敌方级别:</span>
+        <span id="enemy-level" class="highlight">2</span>
+      </div>
+      <div class="info-pill">
+        <span>阶段:</span>
+        <span id="game-phase" class="highlight" style="color: #64ffda;">发牌阶段</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- 游戏牌桌 -->
+  <main class="game-table" id="game-table-container">
+    
+    <!-- 上方玩家 (队友 AI - Player 2) -->
+    <section class="player-seat top" id="seat-2">
+      <div class="player-profile" id="profile-2">
+        <div class="avatar">👨‍✈️</div>
+        <div class="player-name">队友 (AI)</div>
+        <div class="card-count-badge" id="card-count-2">27张</div>
+      </div>
+      <div class="ai-cards-stack" id="cards-stack-2"></div>
+    </section>
+
+    <!-- 左方玩家 (对手2 AI - Player 3) -->
+    <section class="player-seat left" id="seat-3">
+      <div class="player-profile" id="profile-3">
+        <div class="avatar">🥷</div>
+        <div class="player-name">对手2 (AI)</div>
+        <div class="card-count-badge" id="card-count-3">27张</div>
+      </div>
+      <div class="ai-cards-stack" id="cards-stack-3"></div>
+    </section>
+
+    <!-- 右方玩家 (对手1 AI - Player 1) -->
+    <section class="player-seat right" id="seat-1">
+      <div class="player-profile" id="profile-1">
+        <div class="avatar">🦸</div>
+        <div class="player-name">对手1 (AI)</div>
+        <div class="card-count-badge" id="card-count-1">27张</div>
+      </div>
+      <div class="ai-cards-stack" id="cards-stack-1"></div>
+    </section>
+
+    <!-- 牌桌中央出牌区 -->
+    <section class="table-center-play">
+      <!-- 队友出牌区 -->
+      <div class="play-zone top" id="play-zone-2"></div>
+      <!-- 对手2出牌区 -->
+      <div class="play-zone left" id="play-zone-3"></div>
+      <!-- 对手1出牌区 -->
+      <div class="play-zone right" id="play-zone-1"></div>
+      <!-- 玩家自己出牌区 -->
+      <div class="play-zone bottom" id="play-zone-0"></div>
+    </section>
+
+    <!-- 玩家自己 (Player 0) -->
+    <section class="player-seat bottom" id="seat-0">
+      <div class="player-profile active" id="profile-0">
+        <div class="avatar">👑</div>
+        <div class="player-name">你 (玩家)</div>
+        <div class="card-count-badge" id="card-count-0">27张</div>
+      </div>
+      
+      <!-- 玩家操作栏 -->
+      <div class="controls-panel" id="controls-panel">
+        <button class="btn btn-secondary" id="btn-sort">整理手牌</button>
+        <button class="btn btn-secondary" id="btn-reset">重置选择</button>
+        <button class="btn btn-secondary" id="btn-tip">提示</button>
+        <button class="btn btn-danger" id="btn-pass">不出</button>
+        <button class="btn btn-primary" id="btn-play">出牌</button>
+      </div>
+
+      <!-- 玩家手牌区 -->
+      <div class="cards-container" id="player-cards-container">
+        <!-- 动态生成卡牌 -->
+      </div>
+    </section>
+
+  </main>
+
+  <!-- 局终/游戏结束 结算弹窗 (毛玻璃遮罩) -->
+  <div class="overlay-screen" id="settlement-overlay">
+    <div class="dialog-box">
+      <h2 class="dialog-title" id="settlement-title">恭喜，本局获胜！</h2>
+      <div class="dialog-content" id="settlement-content">
+        <!-- 结算文本 -->
+      </div>
+      <button class="btn btn-primary" style="margin: 0 auto;" id="btn-next-round">开始下一局</button>
+    </div>
+  </div>
+
+  <!-- 进贡/退贡 弹窗 -->
+  <div class="overlay-screen" id="tribute-overlay">
+    <div class="dialog-box" style="border-color: #64ffda; box-shadow: 0 15px 30px rgba(0,0,0,0.5), 0 0 15px rgba(100,255,218,0.5);">
+      <h2 class="dialog-title" id="tribute-title" style="color: #64ffda;">进贡阶段</h2>
+      <div class="dialog-content" id="tribute-content">
+        <!-- 进贡细节描述 -->
+      </div>
+      <div id="tribute-cards-choice" style="display: flex; justify-content: center; gap: 15px; margin-bottom: 20px;">
+        <!-- 待选的进贡/退贡牌 -->
+      </div>
+      <button class="btn btn-primary" style="margin: 0 auto; background: linear-gradient(135deg, #00bfa5 0%, #00796b 100%);" id="btn-confirm-tribute" disabled>确认</button>
+    </div>
+  </div>
+
+  <!-- 吐司通知容器 -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- 引入规则与AI算法 -->
+  <script src="rules.js"></script>
+  <script src="ai.js"></script>
+  <!-- 引入核心控制脚本 -->
+  <script src="app.js"></script>
+</body>
+</html>

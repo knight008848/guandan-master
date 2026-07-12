@@ -1,0 +1,619 @@
+/*
+ * style.css - 掼蛋大师 样式表
+ * 融合毛玻璃效果、深色高档牌桌以及细腻的卡牌动画
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Noto+Sans+SC:wght@300;400;700&display=swap');
+
+:root {
+  --table-bg: radial-gradient(circle at center, #1b5e20 0%, #0d381e 50%, #082112 100%);
+  --panel-bg: rgba(18, 30, 20, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.15);
+  --gold-glow: 0 0 15px rgba(255, 215, 0, 0.6);
+  --gold-color: #ffd700;
+  --font-family: 'Outfit', 'Noto Sans SC', sans-serif;
+  
+  --card-width: 80px;
+  --card-height: 120px;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-family);
+  background: var(--table-bg);
+  color: #fff;
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  user-select: none;
+}
+
+/* 顶部状态栏 */
+.header-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 30px;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--glass-border);
+  z-index: 10;
+}
+
+.logo {
+  font-size: 24px;
+  font-weight: 800;
+  background: linear-gradient(135deg, #ffd700, #ffa500);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: 2px;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+}
+
+.game-info {
+  display: flex;
+  gap: 20px;
+  font-size: 14px;
+}
+
+.info-pill {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 6px 15px;
+  border-radius: 20px;
+  border: 1px solid var(--glass-border);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.info-pill .highlight {
+  color: var(--gold-color);
+  font-weight: 700;
+  text-shadow: var(--gold-glow);
+}
+
+/* 牌桌区 */
+.game-table {
+  flex: 1;
+  position: relative;
+  width: 100%;
+  height: calc(100vh - 60px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* 玩家座位通用 */
+.player-seat {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+/* 各方位定位 */
+.player-seat.bottom {
+  bottom: 20px;
+  width: 90%;
+  z-index: 5;
+}
+
+.player-seat.left {
+  left: 30px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 180px;
+}
+
+.player-seat.right {
+  right: 30px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 180px;
+}
+
+.player-seat.top {
+  top: 20px;
+  width: 50%;
+}
+
+/* 玩家头像信息 */
+.player-profile {
+  background: var(--panel-bg);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  padding: 10px 15px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  min-width: 90px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+}
+
+.player-seat.bottom .player-profile {
+  position: absolute;
+  left: 20px;
+  bottom: 0;
+}
+
+.avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  background: #3a506b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+}
+
+.player-profile.active {
+  border-color: var(--gold-color);
+  box-shadow: var(--gold-glow);
+}
+
+.player-name {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.card-count-badge {
+  background: #b71c1c;
+  color: #fff;
+  font-size: 11px;
+  font-weight: bold;
+  padding: 2px 8px;
+  border-radius: 10px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+/* 手牌容器 */
+.cards-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 140px;
+  width: 100%;
+}
+
+.bottom .cards-container {
+  margin-left: 120px; /* 给头像留地方 */
+  max-width: 80%;
+}
+
+/* AI手牌是层叠的背牌或只显示剩余牌数 */
+.ai-cards-stack {
+  position: relative;
+  width: 100px;
+  height: 120px;
+  margin-top: 10px;
+}
+
+/* 扑克牌主体 */
+.card {
+  position: relative;
+  width: var(--card-width);
+  height: var(--card-height);
+  background: #fff;
+  border-radius: 8px;
+  color: #222;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+  transition: transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1), box-shadow 0.2s ease, border-color 0.2s ease;
+  user-select: none;
+  font-family: 'Outfit', sans-serif;
+  overflow: hidden;
+}
+
+/* 卡牌层叠负边距（针对用户手牌） */
+.bottom .cards-container .card {
+  margin-right: -42px; /* 高度重叠 */
+}
+.bottom .cards-container .card:last-child {
+  margin-right: 0;
+}
+
+/* 卡牌正面细节 */
+.card-face {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 6px;
+}
+
+.card-corner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.1;
+}
+
+.card-corner.top-left {
+  align-items: flex-start;
+}
+
+.card-corner.bottom-right {
+  align-items: flex-end;
+  transform: rotate(180deg);
+}
+
+.card-value {
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.card-suit-small {
+  font-size: 14px;
+}
+
+.card-center-suit {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 32px;
+  opacity: 0.85;
+}
+
+/* 红黑颜色 */
+.card.red {
+  color: #c62828;
+}
+.card.black {
+  color: #212121;
+}
+
+/* 卡牌背部 */
+.card.back {
+  background: linear-gradient(135deg, #b71c1c 0%, #880e4f 50%, #4a0011 100%);
+  border: 3px solid #fff;
+  box-shadow: 0 3px 6px rgba(0,0,0,0.4);
+}
+
+.card.back::before {
+  content: '';
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  right: 6px;
+  bottom: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  background-image: radial-gradient(rgba(255,255,255,0.1) 20%, transparent 20%),
+                    radial-gradient(rgba(255,255,255,0.1) 20%, transparent 20%);
+  background-size: 8px 8px;
+  background-position: 0 0, 4px 4px;
+}
+
+/* 逢人配金色流光 */
+.card.wild {
+  box-shadow: 0 0 10px rgba(255, 215, 0, 0.8), 0 3px 6px rgba(0,0,0,0.3);
+  border: 2px solid var(--gold-color) !important;
+}
+
+.card.wild::after {
+  content: '配';
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: linear-gradient(135deg, #ffd700, #ff8c00);
+  color: #000;
+  font-size: 9px;
+  font-weight: 900;
+  padding: 1px 4px;
+  border-bottom-left-radius: 6px;
+  box-shadow: -1px 1px 2px rgba(0,0,0,0.3);
+}
+
+/* 卡牌悬停与选中状态 */
+.card:hover {
+  transform: translateY(-12px);
+  z-index: 100 !important;
+  box-shadow: 0 10px 16px rgba(0, 0, 0, 0.4);
+}
+
+.card.selected {
+  transform: translateY(-24px) !important;
+  box-shadow: var(--gold-glow), 0 12px 20px rgba(0, 0, 0, 0.5);
+  border: 2px solid var(--gold-color);
+  z-index: 90 !important;
+}
+
+/* 出牌展示区 */
+.table-center-play {
+  position: absolute;
+  width: 60%;
+  height: 40%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  pointer-events: none;
+}
+
+.play-zone {
+  position: absolute;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-width: 150px;
+  min-height: 100px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.play-zone.bottom { bottom: 10px; }
+.play-zone.top { top: 10px; }
+.play-zone.left { left: 40px; }
+.play-zone.right { right: 40px; }
+
+/* 提示文本 */
+.play-hint {
+  font-size: 16px;
+  font-weight: bold;
+  background: rgba(0,0,0,0.6);
+  padding: 6px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--glass-border);
+  animation: fadeIn 0.3s ease;
+  color: #ccc;
+}
+
+.play-hint.pass {
+  color: #ff5252;
+}
+
+/* 出牌卡牌重叠 */
+.play-zone .card {
+  margin-right: -48px !important;
+  transform: scale(0.85);
+  box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+  cursor: default;
+}
+.play-zone .card:hover {
+  transform: scale(0.85);
+}
+.play-zone .card:last-child {
+  margin-right: 0 !important;
+}
+
+/* 操作控制面板 */
+.controls-panel {
+  position: absolute;
+  bottom: 160px;
+  display: flex;
+  gap: 15px;
+  z-index: 100;
+  width: 100%;
+  justify-content: center;
+  pointer-events: none; /* 穿透 */
+}
+
+.btn {
+  pointer-events: auto; /* 激活 */
+  padding: 10px 24px;
+  font-size: 16px;
+  font-weight: bold;
+  border: none;
+  border-radius: 25px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+  font-family: var(--font-family);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn:active {
+  transform: scale(0.95);
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #4caf50 0%, #2e7d32 100%);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.2);
+}
+.btn-primary:hover {
+  background: linear-gradient(135deg, #66bb6a 0%, #388e3c 100%);
+  box-shadow: 0 0 15px rgba(76, 175, 80, 0.4);
+}
+
+.btn-danger {
+  background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
+  color: #fff;
+}
+.btn-danger:hover {
+  background: linear-gradient(135deg, #ef5350 0%, #c62828 100%);
+}
+
+.btn-secondary {
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(5px);
+}
+.btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* 结算遮罩层 (毛玻璃) */
+.overlay-screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(5, 15, 8, 0.7);
+  backdrop-filter: blur(15px);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s ease;
+}
+
+.overlay-screen.show {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.dialog-box {
+  background: rgba(20, 35, 25, 0.85);
+  border: 2.5px solid var(--gold-color);
+  border-radius: 20px;
+  padding: 40px;
+  width: 480px;
+  text-align: center;
+  box-shadow: 0 15px 30px rgba(0,0,0,0.5), var(--gold-glow);
+  transform: scale(0.9);
+  transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.overlay-screen.show .dialog-box {
+  transform: scale(1);
+}
+
+.dialog-title {
+  font-size: 32px;
+  font-weight: 800;
+  color: var(--gold-color);
+  margin-bottom: 20px;
+  text-shadow: var(--gold-glow);
+}
+
+.dialog-content {
+  font-size: 16px;
+  line-height: 1.6;
+  margin-bottom: 30px;
+}
+
+.dialog-content p {
+  margin-bottom: 10px;
+}
+
+/* 消息通知 (Toast) */
+.toast-container {
+  position: fixed;
+  top: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 300;
+  pointer-events: none;
+}
+
+.toast {
+  background: rgba(0, 0, 0, 0.8);
+  border-left: 4px solid var(--gold-color);
+  padding: 10px 24px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: bold;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  animation: slideDownFadeIn 0.3s forwards, fadeOut 0.3s 2.7s forwards;
+  pointer-events: auto;
+}
+
+/* 动效关键帧 */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideDownFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeOut {
+  to {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+}
+
+/* 爆炸特效容器 */
+.particle {
+  position: absolute;
+  pointer-events: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  z-index: 500;
+  animation: explode 0.8s cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
+}
+
+@keyframes explode {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--tx), var(--ty)) scale(0);
+    opacity: 0;
+  }
+}
+
+/* 屏幕震动 */
+.screen-shake {
+  animation: shake 0.4s ease-in-out;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translate(0, 0); }
+  10%, 30%, 50%, 70%, 90% { transform: translate(-3px, -2px); }
+  20%, 40%, 60%, 80% { transform: translate(3px, 2px); }
+}
+
+/* 发牌飞行动效 */
+.card.flying {
+  position: absolute;
+  z-index: 200;
+  pointer-events: none;
+  animation: flyToHand 0.4s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+
+@keyframes flyToHand {
+  0% {
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.2) rotate(0deg);
+  }
+  100% {
+    top: var(--target-top);
+    left: var(--target-left);
+    transform: translate(0, 0) scale(1) rotate(var(--target-rot));
+  }
+}
