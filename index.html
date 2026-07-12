@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>掼蛋大师 - 网页版对战游戏</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="/src/style.css">
 </head>
 <body>
 
@@ -131,10 +131,7 @@
   <!-- 吐司通知容器 -->
   <div class="toast-container" id="toast-container"></div>
 
-  <!-- 引入规则与AI算法 -->
-  <script src="rules.js"></script>
-  <script src="ai.js"></script>
-  <!-- 引入核心控制脚本 -->
-  <script src="app.js"></script>
+  <!-- 引入打包模块入口 -->
+  <script type="module" src="/src/main.ts"></script>
 </body>
 </html>

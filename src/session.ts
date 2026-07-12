@@ -1,0 +1,498 @@
+/**
+ * session.ts - 游戏核心状态机 (Finite State Machine / GameSession)
+ * 与 DOM 完全解耦，基于自定义 EventEmitter 发送状态变更事件
+ */
+
+import { Card, GamePhase, PlayRecord, Player, PlayerStateView, Suit, TributeInfo } from './types';
+import { canPlay, getCardWeight, isWildCard, sortCards, RANKS } from './rules';
+import { aiChoosePlay } from './ai';
+
+type Listener = (...args: any[]) => void;
+
+class EventEmitter {
+  private events: Record<string, Listener[]> = {};
+
+  on(event: string, listener: Listener) {
+    if (!this.events[event]) {
+      this.events[event] = [];
+    }
+    this.events[event].push(listener);
+  }
+
+  emit(event: string, ...args: any[]) {
+    if (this.events[event]) {
+      this.events[event].forEach(listener => listener(...args));
+    }
+  }
+}
+
+export class GameSession extends EventEmitter {
+  public levelTeamA = 2; // 玩家 + 队友 (0, 2)
+  public levelTeamB = 2; // 对手 (1, 3)
+  public currentRank = '2'; // 当前打几级
+  public phase: GamePhase = 'DEALING';
+
+  public playerHands: Card[][] = [[], [], [], []];
+  public lastPlay: PlayRecord | null = null;
+  public currentPlayer = 0;
+  public currentWinnerIndex = 0;
+  public passCount = 0;
+  public finishedPlayers: number[] = []; // [first, second, third, last]
+
+  public tributeInfo: TributeInfo | null = null;
+  public selectedTributeCard: Card | null = null;
+
+  public players: Player[] = [
+    { name: '你 (玩家)', avatar: '👑', isAI: false },
+    { name: '对手1 (AI)', avatar: '🦸', isAI: true },
+    { name: '队友 (AI)', avatar: '👨‍✈️', isAI: true },
+    { name: '对手2 (AI)', avatar: '🥷', isAI: true }
+  ];
+
+  constructor() {
+    super();
+  }
+
+  public initGame() {
+    this.phase = 'DEALING';
+    this.playerHands = [[], [], [], []];
+    this.lastPlay = null;
+    this.currentPlayer = 0;
+    this.currentWinnerIndex = 0;
+    this.passCount = 0;
+    this.finishedPlayers = [];
+    this.tributeInfo = null;
+    this.selectedTributeCard = null;
+
+    this.emit('deal_started');
+    this.dealCards();
+  }
+
+  private dealCards() {
+    // 1. 创建和洗牌
+    let deck: Card[] = [];
+    const suits: Suit[] = ['H', 'D', 'C', 'S'];
+    for (let d = 0; d < 2; d++) {
+      suits.forEach(suit => {
+        RANKS.forEach(rank => {
+          deck.push({ suit, rank });
+        });
+      });
+      deck.push({ suit: 'J', rank: 'black_joker' });
+      deck.push({ suit: 'J', rank: 'red_joker' });
+    }
+
+    // Fisher-Yates shuffle
+    for (let i = deck.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [deck[i], deck[j]] = [deck[j], deck[i]];
+    }
+
+    // 发牌
+    for (let i = 0; i < deck.length; i++) {
+      const playerIdx = i % 4;
+      this.playerHands[playerIdx].push(deck[i]);
+    }
+
+    // 排序手牌
+    for (let p = 0; p < 4; p++) {
+      this.playerHands[p] = sortCards(this.playerHands[p], this.currentRank);
+    }
+
+    // 触发完成事件，让渲染层开始渲染与动画
+    setTimeout(() => {
+      this.emit('deal_finished', this.playerHands);
+      
+      // 第一局无进贡直接开打
+      if (this.levelTeamA === 2 && this.levelTeamB === 2 && this.finishedPlayers.length === 0) {
+        this.phase = 'PLAYING';
+        this.currentPlayer = 0;
+        this.emit('turn_started', this.currentPlayer, true, null);
+      } else {
+        this.checkTribute();
+      }
+    }, 1200); // 预留动画过渡时间
+  }
+
+  // 进贡判定
+  private checkTribute() {
+    this.phase = 'TRIBUTE';
+    
+    const last = this.finishedPlayers[3] !== undefined ? this.finishedPlayers[3] : this.getRemainingPlayerIndex();
+    const first = this.finishedPlayers[0];
+    const second = this.finishedPlayers[1];
+
+    const isDoubleUpstream = (first === 0 && second === 2) || 
+                             (first === 2 && second === 0) ||
+                             (first === 1 && second === 3) ||
+                             (first === 3 && second === 1);
+
+    if (isDoubleUpstream) {
+      const winners = [first, second];
+      const losers = [this.finishedPlayers[2], last];
+      this.setupTribute(losers, winners, true);
+    } else {
+      this.setupTribute([last], [first], false);
+    }
+  }
+
+  private getRemainingPlayerIndex(): number {
+    return [0, 1, 2, 3].find(p => !this.finishedPlayers.includes(p)) || 0;
+  }
+
+  private setupTribute(payers: number[], receivers: number[], isDouble: boolean) {
+    this.tributeInfo = {
+      payers,
+      receivers,
+      isDouble,
+      paidCards: [],
+      status: 'WAITING_TRIBUTE',
+      index: 0
+    };
+
+    this.processNextTribute();
+  }
+
+  private processNextTribute() {
+    const info = this.tributeInfo;
+    if (!info) return;
+
+    if (info.index >= info.payers.length) {
+      info.status = 'WAITING_RETURN';
+      info.index = 0;
+      this.processNextReturn();
+      return;
+    }
+
+    const payer = info.payers[info.index];
+    const receiver = info.receivers[info.index];
+
+    // 检查抗贡
+    let hasAntiTribute = false;
+    if (info.isDouble) {
+      const j1 = this.countRedJokers(info.payers[0]);
+      const j2 = this.countRedJokers(info.payers[1]);
+      if (j1 + j2 === 2) hasAntiTribute = true;
+    } else {
+      if (this.countRedJokers(payer) === 2) hasAntiTribute = true;
+    }
+
+    if (hasAntiTribute) {
+      this.emit('toast', '输家拥有一对红心大王，抗贡成功！免除本局进贡。');
+      this.endTributePhase();
+      return;
+    }
+
+    if (payer === 0) {
+      // 玩家进贡，派发UI选择事件
+      const eligible = this.playerHands[0].filter(c => !isWildCard(c, this.currentRank));
+      const sorted = sortCards(eligible, this.currentRank);
+      this.emit('tribute_required', '请选择您手牌中最大的一张牌进行进贡：', sorted.slice(0, 5));
+    } else {
+      // AI 进贡
+      const eligible = this.playerHands[payer].filter(c => !isWildCard(c, this.currentRank));
+      const sorted = sortCards(eligible, this.currentRank);
+      const card = sorted[0];
+      this.executeTribute(payer, receiver, card);
+    }
+  }
+
+  private countRedJokers(playerIdx: number): number {
+    return this.playerHands[playerIdx].filter(c => c.rank === 'red_joker').length;
+  }
+
+  public submitTributeCard(card: Card) {
+    const info = this.tributeInfo;
+    if (!info) return;
+
+    if (info.status === 'WAITING_TRIBUTE') {
+      const payer = info.payers[info.index];
+      const receiver = info.receivers[info.index];
+      this.executeTribute(payer, receiver, card);
+    } else {
+      const receiver = info.receivers[info.index];
+      const payer = info.payers[info.index];
+      this.executeReturn(receiver, payer, card);
+    }
+  }
+
+  private executeTribute(payer: number, receiver: number, card: Card) {
+    this.removeCard(payer, card);
+    this.playerHands[receiver].push(card);
+    this.playerHands[receiver] = sortCards(this.playerHands[receiver], this.currentRank);
+
+    this.tributeInfo?.paidCards.push({ payer, receiver, card });
+    this.emit('tribute_card_paid', payer, receiver, card, this.playerHands);
+
+    setTimeout(() => {
+      if (this.tributeInfo) {
+        this.tributeInfo.index++;
+        this.processNextTribute();
+      }
+    }, 1200);
+  }
+
+  private processNextReturn() {
+    const info = this.tributeInfo;
+    if (!info) return;
+
+    if (info.index >= info.receivers.length) {
+      this.endTributePhase();
+      return;
+    }
+
+    const receiver = info.receivers[info.index];
+    const payer = info.payers[info.index];
+
+    if (receiver === 0) {
+      const eligible = this.playerHands[0].filter(c => {
+        return getCardWeight(c.rank, this.currentRank) <= 10 && !isWildCard(c, this.currentRank);
+      });
+      const sorted = sortCards(eligible.length > 0 ? eligible : this.playerHands[0], this.currentRank);
+      this.emit('return_required', `请退还一张卡牌给 ${this.players[payer].name}（需≤10）：`, sorted);
+    } else {
+      // AI 退贡
+      const eligible = this.playerHands[receiver].filter(c => {
+        return getCardWeight(c.rank, this.currentRank) <= 10 && !isWildCard(c, this.currentRank);
+      });
+      const sorted = sortCards(eligible.length > 0 ? eligible : this.playerHands[receiver], this.currentRank);
+      const card = sorted[sorted.length - 1]; // 选最小的退还
+      this.executeReturn(receiver, payer, card);
+    }
+  }
+
+  private executeReturn(receiver: number, payer: number, card: Card) {
+    this.removeCard(receiver, card);
+    this.playerHands[payer].push(card);
+    this.playerHands[payer] = sortCards(this.playerHands[payer], this.currentRank);
+
+    this.emit('return_card_paid', receiver, payer, card, this.playerHands);
+
+    setTimeout(() => {
+      if (this.tributeInfo) {
+        this.tributeInfo.index++;
+        this.processNextReturn();
+      }
+    }, 1200);
+  }
+
+  private endTributePhase() {
+    this.phase = 'PLAYING';
+    // 进贡大者先出牌，这里做简化设定：由上一局的头游先出
+    this.currentPlayer = this.finishedPlayers[0] !== undefined ? this.finishedPlayers[0] : 0;
+    this.emit('tribute_finished', this.currentPlayer);
+    this.emit('turn_started', this.currentPlayer, true, null);
+  }
+
+  // 玩家/AI 动作接口
+  public playCards(cards: Card[]): boolean {
+    if (this.phase !== 'PLAYING') return false;
+
+    // 校验
+    const combo = canPlay(cards, this.lastPlay ? {
+      type: this.lastPlay.type,
+      power: this.lastPlay.power,
+      cardCount: this.lastPlay.cardCount
+    } : null, this.currentRank);
+
+    if (!combo) return false;
+
+    // 扣牌
+    cards.forEach(c => this.removeCard(this.currentPlayer, c));
+
+    // 更新最后出牌记录
+    this.lastPlay = {
+      type: combo.type,
+      power: combo.power,
+      cardCount: combo.cardCount,
+      playerIndex: this.currentPlayer
+    };
+
+    this.currentWinnerIndex = this.currentPlayer;
+    this.passCount = 0;
+
+    this.emit('cards_played', this.currentPlayer, cards, combo, this.playerHands);
+
+    // 检查是否走完
+    if (this.playerHands[this.currentPlayer].length === 0) {
+      this.playerGoneOut(this.currentPlayer);
+    }
+
+    if (this.checkRoundEnd()) return true;
+
+    // 下一位
+    this.nextPlayer();
+    return true;
+  }
+
+  public passTurn(): boolean {
+    if (this.phase !== 'PLAYING') return false;
+
+    this.passCount++;
+    this.emit('pass_played', this.currentPlayer);
+
+    if (this.checkRoundEnd()) return true;
+
+    this.nextPlayer();
+    return true;
+  }
+
+  private nextPlayer() {
+    this.currentPlayer = (this.currentPlayer + 1) % 4;
+    
+    // 如果下家已经出完牌了，自动跳过
+    while (this.playerHands[this.currentPlayer].length === 0) {
+      this.currentPlayer = (this.currentPlayer + 1) % 4;
+    }
+
+    // 检查是否都过了一圈
+    if (this.passCount === 3) {
+      // 这一轮出牌结束，清空出牌区
+      this.lastPlay = null;
+      this.passCount = 0;
+      this.emit('trick_ended', this.currentWinnerIndex);
+
+      // 接风判定：如果当前赢家已经出完，首发权给他的队友
+      if (this.playerHands[this.currentWinnerIndex].length === 0) {
+        const partner = (this.currentWinnerIndex + 2) % 4;
+        this.currentPlayer = partner;
+        this.currentWinnerIndex = partner;
+        this.emit('toast', `出牌赢家已出完手牌，由队友接风首发！`);
+      } else {
+        this.currentPlayer = this.currentWinnerIndex;
+      }
+    }
+
+    // 启动下个玩家的动作
+    const isLead = !this.lastPlay || this.lastPlay.type === 'INVALID';
+    this.emit('turn_started', this.currentPlayer, isLead, this.lastPlay);
+
+    if (this.players[this.currentPlayer].isAI) {
+      setTimeout(() => this.executeAILogic(), 1400);
+    }
+  }
+
+  private executeAILogic() {
+    // 构造 AI 只读状态镜像
+    const view: PlayerStateView = {
+      hand: this.playerHands[this.currentPlayer],
+      lastPlay: this.lastPlay,
+      currentRank: this.currentRank,
+      myIndex: this.currentPlayer,
+      currentWinnerIndex: this.currentWinnerIndex,
+      opponentCardCounts: [
+        this.playerHands[0].length,
+        this.playerHands[1].length,
+        this.playerHands[2].length,
+        this.playerHands[3].length
+      ]
+    };
+
+    const play = aiChoosePlay(view);
+    if (play && play.length > 0) {
+      this.playCards(play);
+    } else {
+      this.passTurn();
+    }
+  }
+
+  private playerGoneOut(playerIdx: number) {
+    if (!this.finishedPlayers.includes(playerIdx)) {
+      this.finishedPlayers.push(playerIdx);
+      this.emit('player_gone_out', playerIdx, this.finishedPlayers.length);
+    }
+  }
+
+  private checkRoundEnd(): boolean {
+    const teamAFinished = this.finishedPlayers.filter(p => p === 0 || p === 2).length;
+    const teamBFinished = this.finishedPlayers.filter(p => p === 1 || p === 3).length;
+
+    if (teamAFinished === 2) {
+      this.endRound(0);
+      return true;
+    }
+    if (teamBFinished === 2) {
+      this.endRound(1);
+      return true;
+    }
+    if (this.finishedPlayers.length === 3) {
+      const winner = this.finishedPlayers[0];
+      const winTeam = (winner === 0 || winner === 2) ? 0 : 1;
+      this.endRound(winTeam);
+      return true;
+    }
+    return false;
+  }
+
+  private endRound(winTeamIdx: number) {
+    this.phase = 'ROUND_END';
+    const first = this.finishedPlayers[0];
+    const second = this.finishedPlayers[1];
+
+    let upgradeLevels = 1;
+    let isDouble = false;
+
+    // 双游判定
+    const isDoubleUpstream = (first === 0 && second === 2) || (first === 2 && second === 0) ||
+                             (first === 1 && second === 3) || (first === 3 && second === 1);
+
+    if (isDoubleUpstream) {
+      upgradeLevels = 3;
+      isDouble = true;
+    } else {
+      const partnerIndex = (first + 2) % 4;
+      if (second === partnerIndex) {
+        upgradeLevels = 2;
+      }
+    }
+
+    let finalRankStr = this.finishedPlayers.map((p, i) => `${i + 1}. ${this.players[p].name}`).join('<br>');
+
+    if (winTeamIdx === 0) {
+      this.levelTeamA += upgradeLevels;
+      if (this.levelTeamA > 14) this.levelTeamA = 14;
+      this.currentRank = getRankChar(this.levelTeamA);
+    } else {
+      this.levelTeamB += upgradeLevels;
+      if (this.levelTeamB > 14) this.levelTeamB = 14;
+      this.currentRank = getRankChar(this.levelTeamB);
+    }
+
+    this.emit('round_ended', winTeamIdx, upgradeLevels, isDouble, finalRankStr);
+  }
+
+  public startNextRound() {
+    // 检查大结局
+    if (this.levelTeamA === 14 && this.finishedPlayers[0] === 0) {
+      this.emit('toast', '恭喜您完成了打 A，获得了整局游戏的最终胜利！重新开始新游戏。');
+      this.levelTeamA = 2;
+      this.levelTeamB = 2;
+      this.currentRank = '2';
+      this.finishedPlayers = [];
+    } else if (this.levelTeamB === 14 && (this.finishedPlayers[0] === 1 || this.finishedPlayers[0] === 3)) {
+      this.emit('toast', '很遗憾，对手打过了 A 赢得了最终胜利。重新开始新游戏。');
+      this.levelTeamA = 2;
+      this.levelTeamB = 2;
+      this.currentRank = '2';
+      this.finishedPlayers = [];
+    }
+
+    this.initGame();
+  }
+
+  private removeCard(playerIdx: number, card: Card) {
+    const idx = this.playerHands[playerIdx].findIndex(c => c.suit === card.suit && c.rank === card.rank);
+    if (idx !== -1) {
+      this.playerHands[playerIdx].splice(idx, 1);
+    }
+  }
+}
+
+// 辅助转化
+function getRankChar(levelValue: number): string {
+  const map: Record<number, string> = {
+    2: '2', 3: '3', 4: '4', 5: '5', 6: '6', 7: '7', 8: '8', 9: '9', 10: '10',
+    11: 'J', 12: 'Q', 13: 'K', 14: 'A'
+  };
+  return map[levelValue] || '2';
+}
