@@ -47,7 +47,7 @@ export class GameSession extends EventEmitter {
     { name: '你 (玩家)', avatar: '👑', isAI: false },
     { name: '对手1 (AI)', avatar: '🦸', isAI: true },
     { name: '队友 (AI)', avatar: '👨‍✈️', isAI: true },
-    { name: '对手2 (AI)', avatar: '🥷', isAI: true }
+    { name: '对手2 (AI)', avatar: '🕵️', isAI: true }
   ];
 
   constructor() {
