@@ -699,3 +699,23 @@ body {
     transform: translate(0, 0) scale(1) rotate(var(--target-rot));
   }
 }
+
+/* 替配卡牌高级样式 (带金色/青色流光及标识) */
+.card.substituted {
+  box-shadow: 0 0 10px rgba(100, 255, 218, 0.8), 0 3px 6px rgba(0,0,0,0.3);
+  border: 2px solid #64ffda !important;
+}
+
+.card.substituted::after {
+  content: '代';
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: linear-gradient(135deg, #64ffda, #00bfa5);
+  color: #000;
+  font-size: 9px;
+  font-weight: 900;
+  padding: 1px 4px;
+  border-bottom-left-radius: 6px;
+  box-shadow: -1px 1px 2px rgba(0,0,0,0.3);
+}

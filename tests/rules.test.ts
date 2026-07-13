@@ -176,5 +176,21 @@ describe('Guandan Rules Unit Tests', () => {
       // 5. Straight flush does not beat 6-card bomb
       expect(canPlay(straightFlush, combo6, '10')).toBeNull();
     });
+
+    it('should detect straight flush with wild card', () => {
+      // currentRank = '10'
+      // Hand: Spades 5, Spades 6, Spades 7, Spades 8, Hearts 10 (wild card)
+      const cards = [
+        { suit: 'S', rank: '5' },
+        { suit: 'S', rank: '6' },
+        { suit: 'S', rank: '7' },
+        { suit: 'S', rank: '8' },
+        { suit: 'H', rank: '10' } // Wild card
+      ];
+      const result = canPlay(cards, null, '10');
+      expect(result).not.toBeNull();
+      expect(result?.type).toBe(HAND_TYPES.BOMB);
+      expect(result?.name).toBe('同花顺');
+    });
   });
 });

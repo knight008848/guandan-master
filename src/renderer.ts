@@ -5,7 +5,7 @@
 
 import { Card, Combo, HandType, Suit } from './types';
 import { GameSession } from './session';
-import { sortCards } from './rules';
+import { sortCards, isWildCard, getCardWeight } from './rules';
 import { aiFollowPlay } from './ai';
 
 export class DOMRenderer {
@@ -17,6 +17,9 @@ export class DOMRenderer {
 
   // 进贡退贡暂存选择
   private selectedTributeCard: Card | null = null;
+
+  // 排序模式 (按牌值 / 按花色)
+  private sortMode: 'RANK' | 'SUIT' = 'RANK';
 
   constructor(session: GameSession) {
     this.session = session;
@@ -40,6 +43,7 @@ export class DOMRenderer {
   private subscribeSessionEvents() {
     this.session.on('deal_started', () => {
       this.showToast('正在洗牌发牌，请稍等...');
+      document.getElementById('settlement-overlay')?.classList.remove('show');
       this.clearPlayZones();
       this.hideControls();
       this.updateStatusUI();
@@ -90,7 +94,7 @@ export class DOMRenderer {
     });
 
     this.session.on('cards_played', (playerIdx: number, cards: Card[], combo: Combo, hands: Card[][]) => {
-      this.renderPlayZone(playerIdx, cards);
+      this.renderPlayZone(playerIdx, cards, combo);
       this.updateCardCounts(hands);
       if (playerIdx === 0) {
         this.renderAllHands(hands);
@@ -169,9 +173,25 @@ export class DOMRenderer {
   private renderAllHands(hands: Card[][]) {
     const playerContainer = document.getElementById('player-cards-container');
     if (playerContainer) {
+      // 1. 保存之前被选中的卡牌信息
+      const selectedCards: Card[] = [];
+      playerContainer.querySelectorAll('.card.selected').forEach(el => {
+        const htmlEl = el as HTMLElement;
+        selectedCards.push({
+          suit: htmlEl.dataset.suit as Suit,
+          rank: htmlEl.dataset.rank || ''
+        });
+      });
+
       playerContainer.innerHTML = '';
       hands[0].forEach(card => {
         const cardEl = this.createCardElement(card);
+        // 2. 还原卡牌选中状态
+        const matchIdx = selectedCards.findIndex(sc => sc.suit === card.suit && sc.rank === card.rank);
+        if (matchIdx !== -1) {
+          cardEl.classList.add('selected');
+          selectedCards.splice(matchIdx, 1); // 消费该选中状态
+        }
         playerContainer.appendChild(cardEl);
       });
     }
@@ -223,6 +243,9 @@ export class DOMRenderer {
 
     if (card.rank === this.session.currentRank && card.suit === 'H') {
       cardEl.classList.add('wild');
+    }
+    if (card.isSubstituted) {
+      cardEl.classList.add('substituted');
     }
 
     const suitSymbols: Record<Suit, string> = {
@@ -330,8 +353,38 @@ export class DOMRenderer {
   }
 
   private handleSortCards() {
-    this.session.playerHands[0] = sortCards(this.session.playerHands[0], this.session.currentRank);
+    this.sortMode = this.sortMode === 'RANK' ? 'SUIT' : 'RANK';
+    this.session.playerHands[0] = this.sortPlayerHand(this.session.playerHands[0], this.session.currentRank, this.sortMode);
     this.renderAllHands(this.session.playerHands);
+    this.showToast(this.sortMode === 'RANK' ? '已按牌值整理' : '已按同花/花色整理');
+  }
+
+  private sortPlayerHand(cards: Card[], currentRank: string, mode: 'RANK' | 'SUIT'): Card[] {
+    if (mode === 'RANK') {
+      return sortCards(cards, currentRank);
+    } else {
+      // 按同花/花色整理：逢人配在最前，其次是大小王，然后按花色分组排序 (红桃 > 黑桃 > 梅花 > 方块)
+      return [...cards].sort((a, b) => {
+        const aWild = isWildCard(a, currentRank);
+        const bWild = isWildCard(b, currentRank);
+        if (aWild && !bWild) return -1;
+        if (!aWild && bWild) return 1;
+
+        const aJoker = a.rank === 'red_joker' || a.rank === 'black_joker';
+        const bJoker = b.rank === 'red_joker' || b.rank === 'black_joker';
+        if (aJoker && !bJoker) return -1;
+        if (!aJoker && bJoker) return 1;
+        if (aJoker && bJoker) {
+          return getCardWeight(b.rank, currentRank) - getCardWeight(a.rank, currentRank);
+        }
+
+        const suitOrder: Record<Suit, number> = { 'H': 4, 'S': 3, 'C': 2, 'D': 1, 'J': 0 };
+        if (a.suit !== b.suit) {
+          return suitOrder[b.suit] - suitOrder[a.suit];
+        }
+        return getCardWeight(b.rank, currentRank) - getCardWeight(a.rank, currentRank);
+      });
+    }
   }
 
   private handleTipCards() {
@@ -451,7 +504,7 @@ export class DOMRenderer {
     }
   }
 
-  private renderPlayZone(playerIdx: number, cards: Card[]) {
+  private renderPlayZone(playerIdx: number, cards: Card[], combo?: Combo) {
     const zone = document.getElementById(`play-zone-${playerIdx}`);
     if (zone) {
       zone.innerHTML = '';
@@ -459,7 +512,14 @@ export class DOMRenderer {
       zone.className = `play-zone ${positions[playerIdx]}`;
 
       cards.forEach(c => {
-        const cardEl = this.createCardElement(c);
+        let cardToRender = c;
+        if (combo && combo.wildRepresent) {
+          const sub = combo.wildRepresent.find(w => w.original && w.original.suit === c.suit && w.original.rank === c.rank);
+          if (sub) {
+            cardToRender = sub;
+          }
+        }
+        const cardEl = this.createCardElement(cardToRender);
         cardEl.classList.remove('selected');
         cardEl.style.transform = 'none';
         zone.appendChild(cardEl);
