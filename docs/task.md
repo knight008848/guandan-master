@@ -6,12 +6,13 @@
 - [x] 将 PRD 文档 ([prd.md](file:///c:/Users/xx/.gemini/antigravity-ide/scratch/guandan-master/docs/prd.md)) 归档至代码仓库中
 - [x] 将架构设计文档 ([architecture.md](file:///c:/Users/xx/.gemini/antigravity-ide/scratch/guandan-master/docs/architecture.md)) 归档至代码仓库中
 - [x] 配置 GitHub Pages 部署路径基准并编写 GitHub Actions 自动部署流水线
+- [x] **严格进贡规则限制**：
+  - 修改 `src/session.ts` 中的进贡逻辑。玩家进贡时，计算玩家手牌中最大点数的非逢人配卡牌，仅允许玩家在最高点数对应的卡牌中选择（多张同点数可选不同花色），杜绝投机性选择小牌进贡。
 
 ---
 
 ## 🛠 核心规则校验严谨化 (Rules & Tribute Constraints)
-- [x] **严格进贡规则限制**：
-  - 修改 `src/session.ts` 中的进贡逻辑。玩家进贡时，计算玩家手牌中最大点数的非逢人配卡牌，仅允许玩家在最高点数对应的卡牌中选择（多张同点数可选不同花色），杜绝投机性选择小牌进贡。
+
 
 ---
 
