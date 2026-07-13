@@ -228,5 +228,37 @@ describe('GameSession Integration and Flow Tests', () => {
       expect(session.levelTeamB).toBe(5);
       expect(session.levelTeamA).toBe(2);
     });
+
+    it('should track A-rank failure count and demote to level 2 on the third consecutive failure', () => {
+      const session = new GameSession();
+      session.initGame();
+      
+      // Set Team A to level 14 (A)
+      session.levelTeamA = 14;
+      session.currentRank = 'A';
+      
+      // Failure 1: Team A gets 1st (0) but teammate is 4th (2 is not in finishedPlayers)
+      session.finishedPlayers = [0, 1, 3];
+      session.lastRoundFinishedPlayers = [0, 1, 3, 2];
+      session.startNextRound();
+      expect(session.failCountTeamA).toBe(1);
+      expect(session.levelTeamA).toBe(14); // Still 14
+      
+      // Failure 2: Team A gets 1st (0) but teammate is 4th again
+      session.finishedPlayers = [0, 1, 3];
+      session.lastRoundFinishedPlayers = [0, 1, 3, 2];
+      session.startNextRound();
+      expect(session.failCountTeamA).toBe(2);
+      expect(session.levelTeamA).toBe(14);
+      
+      // Failure 3: Team A gets 1st (0) but teammate is 4th again
+      session.finishedPlayers = [0, 1, 3];
+      session.lastRoundFinishedPlayers = [0, 1, 3, 2];
+      session.startNextRound();
+      
+      // Demotes to 2!
+      expect(session.failCountTeamA).toBe(0);
+      expect(session.levelTeamA).toBe(2);
+    });
   });
 });

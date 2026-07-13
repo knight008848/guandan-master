@@ -192,5 +192,21 @@ describe('Guandan Rules Unit Tests', () => {
       expect(result?.type).toBe(HAND_TYPES.BOMB);
       expect(result?.name).toBe('同花顺');
     });
+
+    it('should allow normal level cards to be included in a straight', () => {
+      // currentRank = '8'
+      // Hand: Spades 5, Diamonds 6, Clubs 7, Spades 8 (normal 8), Spades 9 (mixed suits)
+      const cards = [
+        { suit: 'S', rank: '5' },
+        { suit: 'D', rank: '6' },
+        { suit: 'C', rank: '7' },
+        { suit: 'S', rank: '8' }, // level card
+        { suit: 'S', rank: '9' }
+      ];
+      const result = canPlay(cards, null, '8');
+      expect(result).not.toBeNull();
+      expect(result?.type).toBe(HAND_TYPES.STRAIGHT);
+      expect(result?.power).toBe(9); // 9 is max weight
+    });
   });
 });

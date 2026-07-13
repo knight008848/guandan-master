@@ -27,9 +27,11 @@ class EventEmitter {
 }
 
 export class GameSession extends EventEmitter {
-  public levelTeamA = 2; // 玩家 + 队友 (0, 2)
-  public levelTeamB = 2; // 对手 (1, 3)
-  public currentRank = '2'; // 当前打几级
+  public levelTeamA: number = 2; // 2 to 14 (A)
+  public levelTeamB: number = 2;
+  public failCountTeamA: number = 0; // 我方打 A 连续失败次数
+  public failCountTeamB: number = 0; // 敌方打 A 连续失败次数
+  public currentRank: string = '2'; // 当前局级牌打几级
   public phase: GamePhase = 'DEALING';
 
   public playerHands: Card[][] = [[], [], [], []];
@@ -574,21 +576,74 @@ export class GameSession extends EventEmitter {
   }
 
   public startNextRound() {
-    // 检查大结局
-    if (this.levelTeamA === 14 && this.finishedPlayers[0] === 0) {
-      this.emit('toast', '恭喜您完成了打 A，获得了整局游戏的最终胜利！重新开始新游戏。');
-      this.levelTeamA = 2;
-      this.levelTeamB = 2;
-      this.currentRank = '2';
-      this.finishedPlayers = [];
-      this.lastRoundFinishedPlayers = [];
-    } else if (this.levelTeamB === 14 && (this.finishedPlayers[0] === 1 || this.finishedPlayers[0] === 3)) {
-      this.emit('toast', '很遗憾，对手打过了 A 赢得了最终胜利。重新开始新游戏。');
-      this.levelTeamA = 2;
-      this.levelTeamB = 2;
-      this.currentRank = '2';
-      this.finishedPlayers = [];
-      this.lastRoundFinishedPlayers = [];
+    // 检查大结局 (过 A 规则：本方必须拿第一名，且队友不能是最后一名/第四名)
+    const first = this.finishedPlayers[0];
+    const partner = (first + 2) % 4;
+    const isTeammateNotLast = this.finishedPlayers.includes(partner);
+
+    // 只有在当前局级牌为 A (Level 14) 时，才触发过 A 判定与失败计数
+    if (this.currentRank === 'A') {
+      // 1. 我方打 A 判定
+      if (this.levelTeamA === 14) {
+        if ((first === 0 || first === 2) && isTeammateNotLast) {
+          this.emit('toast', '恭喜您和队友成功过 A，获得了整局游戏的最终胜利！重新开始新游戏。');
+          this.levelTeamA = 2;
+          this.levelTeamB = 2;
+          this.currentRank = '2';
+          this.failCountTeamA = 0;
+          this.failCountTeamB = 0;
+          this.finishedPlayers = [];
+          this.lastRoundFinishedPlayers = [];
+          this.initGame();
+          return;
+        } else {
+          this.failCountTeamA++;
+          if (this.failCountTeamA >= 3) {
+            this.emit('toast', '我方连续三次打 A 失败，等级退回 2 级重新开始！');
+            this.levelTeamA = 2;
+            this.failCountTeamA = 0;
+          } else {
+            this.emit('toast', `我方打 A 失败（累计失败 ${this.failCountTeamA} 次，满三次退回 2 级），下局继续打 A！`);
+          }
+        }
+      }
+
+      // 2. 敌方打 A 判定
+      if (this.levelTeamB === 14) {
+        if ((first === 1 || first === 3) && isTeammateNotLast) {
+          this.emit('toast', '很遗憾，对手成功过 A 赢得了最终胜利。重新开始新游戏。');
+          this.levelTeamA = 2;
+          this.levelTeamB = 2;
+          this.currentRank = '2';
+          this.failCountTeamA = 0;
+          this.failCountTeamB = 0;
+          this.finishedPlayers = [];
+          this.lastRoundFinishedPlayers = [];
+          this.initGame();
+          return;
+        } else {
+          this.failCountTeamB++;
+          if (this.failCountTeamB >= 3) {
+            this.emit('toast', '对手连续三次打 A 失败，等级退回 2 级！');
+            this.levelTeamB = 2;
+            this.failCountTeamB = 0;
+          } else {
+            this.emit('toast', `对手打 A 失败（累计失败 ${this.failCountTeamB} 次，满三次退回 2 级），其下局继续打 A！`);
+          }
+        }
+      }
+    }
+
+    // 重置并开始下一局
+    this.finishedPlayers = [];
+
+    // 校准当前局的级牌为上一局赢家的级牌（除非发生退级）
+    const lastWinner = this.lastRoundFinishedPlayers[0];
+    const winTeamIdx = (lastWinner === 0 || lastWinner === 2) ? 0 : 1;
+    if (winTeamIdx === 0) {
+      this.currentRank = getRankChar(this.levelTeamA);
+    } else {
+      this.currentRank = getRankChar(this.levelTeamB);
     }
 
     this.initGame();
