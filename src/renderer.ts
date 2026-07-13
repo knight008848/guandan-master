@@ -202,8 +202,24 @@ export class DOMRenderer {
 
   private createCardElement(card: Card): HTMLElement {
     const cardEl = document.createElement('div');
-    const isRed = card.suit === 'H' || card.suit === 'D';
-    cardEl.className = `card ${isRed ? 'red' : 'black'}`;
+    
+    // 确定4色牌与大小王对应的 CSS 类
+    let suitClass = '';
+    if (card.suit === 'H') {
+      suitClass = 'suit-h';
+    } else if (card.suit === 'S') {
+      suitClass = 'suit-s';
+    } else if (card.suit === 'D') {
+      suitClass = 'suit-d';
+    } else if (card.suit === 'C') {
+      suitClass = 'suit-c';
+    } else if (card.rank === 'red_joker') {
+      suitClass = 'red-joker';
+    } else if (card.rank === 'black_joker') {
+      suitClass = 'black-joker';
+    }
+    
+    cardEl.className = `card ${suitClass}`;
 
     if (card.rank === this.session.currentRank && card.suit === 'H') {
       cardEl.classList.add('wild');
@@ -214,8 +230,10 @@ export class DOMRenderer {
     };
 
     let rankLabel = card.rank;
-    if (card.rank === 'red_joker' || card.rank === 'black_joker') {
-      rankLabel = '王';
+    if (card.rank === 'red_joker') {
+      rankLabel = '大王';
+    } else if (card.rank === 'black_joker') {
+      rankLabel = '小王';
     }
 
     const suitSym = suitSymbols[card.suit] || '';
