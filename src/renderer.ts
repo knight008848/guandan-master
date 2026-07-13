@@ -26,6 +26,7 @@ export class DOMRenderer {
     this.initEventListeners();
     this.subscribeSessionEvents();
     this.initDragSelect();
+    this.initPlayerNames();
   }
 
   // 初始化 DOM 按钮交互
@@ -37,6 +38,8 @@ export class DOMRenderer {
     document.getElementById('btn-tip')?.addEventListener('click', () => this.handleTipCards());
     document.getElementById('btn-next-round')?.addEventListener('click', () => this.session.startNextRound());
     document.getElementById('btn-confirm-tribute')?.addEventListener('click', () => this.handleConfirmTribute());
+    document.getElementById('btn-toggle-log')?.addEventListener('click', () => this.toggleLogPanel());
+    document.getElementById('btn-close-log')?.addEventListener('click', () => this.toggleLogPanel());
   }
 
   // 订阅核心引擎抛出的事件
@@ -561,6 +564,8 @@ export class DOMRenderer {
       container.appendChild(toast);
       setTimeout(() => toast.remove(), 3000);
     }
+    // 同步写入日志区
+    this.addGameLog(msg);
   }
 
   // 炸弹粒子特效
@@ -619,5 +624,39 @@ export class DOMRenderer {
       'STRAIGHT': '顺子', 'DOUBLE_STRAIGHT': '双顺', 'STEEL_PLATE': '钢板', 'BOMB': '炸弹', 'INVALID': '未知'
     };
     return names[type] || '未知';
+  }
+
+  // 动态更新面板玩家名字为 5 字随机名称
+  private initPlayerNames() {
+    for (let p = 0; p < 4; p++) {
+      const nameEl = document.querySelector(`#profile-${p} .player-name`);
+      if (nameEl) {
+        nameEl.textContent = this.session.players[p].name;
+      }
+    }
+  }
+
+  // 展开/收起日志面板
+  private toggleLogPanel() {
+    const panel = document.getElementById('log-panel');
+    panel?.classList.toggle('show');
+  }
+
+  // 向日志面板写入单条记录
+  private addGameLog(msg: string, type: 'info' | 'tribute' | 'round-end' = 'info') {
+    const container = document.getElementById('log-content-list');
+    if (container) {
+      const item = document.createElement('div');
+      item.className = `log-item ${type}`;
+
+      const now = new Date();
+      const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+
+      item.innerHTML = `<span style="color: #64ffda; font-weight: bold; margin-right: 5px;">[${timeStr}]</span> ${msg}`;
+      container.appendChild(item);
+
+      // 自动滚到底部
+      container.scrollTop = container.scrollHeight;
+    }
   }
 }

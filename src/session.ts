@@ -52,6 +52,10 @@ export class GameSession extends EventEmitter {
 
   constructor() {
     super();
+    // 随机生成 5 字名字并附带身份标识
+    this.players[1].name = `${generateRandomName()} (AI)`;
+    this.players[2].name = `${generateRandomName()} (AI)`;
+    this.players[3].name = `${generateRandomName()} (AI)`;
   }
 
   public initGame() {
@@ -601,4 +605,13 @@ function getRankChar(levelValue: number): string {
     11: 'J', 12: 'Q', 13: 'K', 14: 'A'
   };
   return map[levelValue] || '2';
+}
+
+// 随机 5 字姓名生成器
+function generateRandomName(): string {
+  const prefixes = ['无敌', '机智', '冷酷', '呆萌', '傲娇', '愤怒', '狂暴', '优雅', '咸鱼', '追风', '霸气', '低调', '糊涂', '开心'];
+  const suffixes = ['皮皮虾', '哈士奇', '程序猿', '背锅侠', '小黄鸭', '二师兄', '大灰狼', '小红帽', '吃瓜人', '追风者', '扫地僧', '打工人', '干饭王'];
+  const p = prefixes[Math.floor(Math.random() * prefixes.length)];
+  const s = suffixes[Math.floor(Math.random() * suffixes.length)];
+  return p + s;
 }
