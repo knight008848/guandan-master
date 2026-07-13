@@ -1,0 +1,121 @@
+import { describe, it, expect } from 'vitest';
+import { Card } from '../src/types';
+import { getCardWeight, isWildCard, sortCards, evaluateNormalHand, canPlay, HAND_TYPES } from '../src/rules';
+
+describe('Guandan Rules Unit Tests', () => {
+  describe('getCardWeight', () => {
+    it('should return correct weights for normal cards', () => {
+      expect(getCardWeight('2', '2')).toBe(15); // currentRank rank
+      expect(getCardWeight('2', '10')).toBe(2);
+      expect(getCardWeight('10', '10')).toBe(15); // currentRank
+      expect(getCardWeight('K', '2')).toBe(13);
+      expect(getCardWeight('A', '2')).toBe(14);
+    });
+
+    it('should return correct weights for special cards', () => {
+      expect(getCardWeight('black_joker', '2')).toBe(16);
+      expect(getCardWeight('red_joker', '2')).toBe(17);
+    });
+  });
+
+  describe('isWildCard', () => {
+    it('should identify red heart of current rank as wild card', () => {
+      const heartsWild: Card = { suit: 'H', rank: '10' };
+      expect(isWildCard(heartsWild, '10')).toBe(true);
+    });
+
+    it('should not identify other suits of current rank as wild card', () => {
+      const spadesTen: Card = { suit: 'S', rank: '10' };
+      expect(isWildCard(spadesTen, '10')).toBe(false);
+    });
+
+    it('should not identify other ranks of hearts as wild card', () => {
+      const heartsNine: Card = { suit: 'H', rank: '9' };
+      expect(isWildCard(heartsNine, '10')).toBe(false);
+    });
+  });
+
+  describe('sortCards', () => {
+    it('should sort cards in correct hierarchy: wild card -> weight descending -> suit descending', () => {
+      const cards: Card[] = [
+        { suit: 'D', rank: 'A' }, // weight 14
+        { suit: 'H', rank: '2' }, // wild card (current rank 2)
+        { suit: 'S', rank: 'K' }, // weight 13
+        { suit: 'C', rank: 'A' }, // weight 14
+        { suit: 'J', rank: 'red_joker' }, // weight 17
+      ];
+      
+      const sorted = sortCards(cards, '2');
+      
+      // Expected order:
+      // 1. H2 (wild card)
+      // 2. red_joker
+      // 3. A (suit S/H/C/D order: C is H>S>C>D)
+      // 4. A (suit D)
+      // 5. K (suit S)
+      expect(sorted[0]).toEqual({ suit: 'H', rank: '2' });
+      expect(sorted[1]).toEqual({ suit: 'J', rank: 'red_joker' });
+      expect(sorted[2]).toEqual({ suit: 'C', rank: 'A' });
+      expect(sorted[3]).toEqual({ suit: 'D', rank: 'A' });
+      expect(sorted[4]).toEqual({ suit: 'S', rank: 'K' });
+    });
+  });
+
+  describe('evaluateNormalHand', () => {
+    it('should detect SINGLE', () => {
+      const result = evaluateNormalHand([{ suit: 'S', rank: 'A' }], '2');
+      expect(result.type).toBe(HAND_TYPES.SINGLE);
+      expect(result.power).toBe(14);
+    });
+
+    it('should detect PAIR', () => {
+      const result = evaluateNormalHand([
+        { suit: 'S', rank: 'K' },
+        { suit: 'D', rank: 'K' }
+      ], '2');
+      expect(result.type).toBe(HAND_TYPES.PAIR);
+      expect(result.power).toBe(13);
+    });
+
+    it('should detect BOMB', () => {
+      const result = evaluateNormalHand([
+        { suit: 'S', rank: '8' },
+        { suit: 'D', rank: '8' },
+        { suit: 'C', rank: '8' },
+        { suit: 'H', rank: '8' }
+      ], '2');
+      expect(result.type).toBe(HAND_TYPES.BOMB);
+      expect(result.power).toBe(108); // BOMB power has base weight (100 + rankWeight)
+    });
+  });
+
+  describe('canPlay', () => {
+    it('should allow playing a higher card of the same type', () => {
+      const lastPlay = { type: HAND_TYPES.SINGLE, power: 10, cardCount: 1 };
+      const currentCards = [{ suit: 'S', rank: 'J' }]; // weight 11
+      const result = canPlay(currentCards, lastPlay, '2');
+      expect(result).not.toBeNull();
+      expect(result?.type).toBe(HAND_TYPES.SINGLE);
+    });
+
+    it('should not allow playing a lower card of the same type', () => {
+      const lastPlay = { type: HAND_TYPES.SINGLE, power: 12, cardCount: 1 }; // Queen
+      const currentCards = [{ suit: 'S', rank: 'J' }]; // Jack
+      const result = canPlay(currentCards, lastPlay, '2');
+      expect(result).toBeNull();
+    });
+
+    it('should allow a bomb to beat a normal type', () => {
+      const lastPlay = { type: HAND_TYPES.PAIR, power: 14, cardCount: 2 }; // Pair of Aces
+      const bomb = [
+        { suit: 'S', rank: '5' },
+        { suit: 'D', rank: '5' },
+        { suit: 'C', rank: '5' },
+        { suit: 'H', rank: '5' }
+      ];
+      const result = canPlay(bomb, lastPlay, '2');
+      expect(result).not.toBeNull();
+      expect(result?.type).toBe(HAND_TYPES.BOMB);
+    });
+  });
+});

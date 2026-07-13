@@ -1,0 +1,178 @@
+import { describe, it, expect, vi } from 'vitest';
+import { GameSession } from '../src/session';
+import { Card } from '../src/types';
+import { getCardWeight } from '../src/rules';
+
+describe('GameSession Integration and Flow Tests', () => {
+  it('should initialize game state, deal 108 cards, 27 per player', () => {
+    const session = new GameSession();
+    session.initGame();
+
+    expect(session.phase).toBe('DEALING');
+    expect(session.playerHands[0].length).toBe(27);
+    expect(session.playerHands[1].length).toBe(27);
+    expect(session.playerHands[2].length).toBe(27);
+    expect(session.playerHands[3].length).toBe(27);
+
+    const totalCards = session.playerHands.reduce((acc, h) => acc + h.length, 0);
+    expect(totalCards).toBe(108);
+  });
+
+  describe('Tribute Stage (单贡 / Single Tribute)', () => {
+    it('should assign correct payer and receiver, automatically process AI tribute, and prompt player for return', () => {
+      vi.useFakeTimers();
+      const session = new GameSession();
+      
+      // Setup state for Single Tribute (1st: player 0, 4th: player 3)
+      session.levelTeamA = 3; // ensure it is not the first game
+      session.lastRoundFinishedPlayers = [0, 1, 2, 3];
+      
+      // Mock player hands
+      session.playerHands = [
+        [{ suit: 'S', rank: 'A' }, { suit: 'D', rank: '10' }, { suit: 'C', rank: '5' }], // Player 0 (receiver)
+        [{ suit: 'S', rank: '9' }],
+        [{ suit: 'S', rank: '8' }],
+        [{ suit: 'S', rank: 'K' }, { suit: 'D', rank: '4' }] // Player 3 (payer, AI)
+      ];
+
+      // Spy on return_required event
+      let returnRequiredData: any = null;
+      session.on('return_required', (desc, eligible) => {
+        returnRequiredData = { desc, eligible };
+      });
+
+      // Start tribute phase
+      session.checkTribute();
+
+      // Check tribute setup
+      expect(session.phase).toBe('TRIBUTE');
+      expect(session.tributeInfo).not.toBeNull();
+      expect(session.tributeInfo?.isDouble).toBe(false);
+      expect(session.tributeInfo?.payers).toEqual([3]);
+      expect(session.tributeInfo?.receivers).toEqual([0]);
+
+      // Since payer 3 is AI, checkTribute -> setupTribute -> processNextTribute -> AI automatically tributes card
+      // AI should tribute its largest card (King of Spades) to Player 0
+      expect(session.playerHands[0].some(c => c.suit === 'S' && c.rank === 'K')).toBe(true);
+      expect(session.playerHands[3].some(c => c.suit === 'S' && c.rank === 'K')).toBe(false);
+
+      // Advance timers to trigger next step (AI tribute transition)
+      vi.advanceTimersByTime(1200);
+
+      // Now it should be player 0's turn to return card (退贡 / 还牌)
+      expect(session.tributeInfo?.status).toBe('WAITING_RETURN');
+      expect(returnRequiredData).not.toBeNull();
+      // Player 0 should only be allowed to return cards <= 10.
+      // Hand 0 has: A (14), 10 (10), 5 (5), and K (13, received from 3).
+      // So eligible return cards are 10 and 5.
+      expect(returnRequiredData.eligible.length).toBe(2);
+      expect(returnRequiredData.eligible.some((c: Card) => c.rank === '10')).toBe(true);
+      expect(returnRequiredData.eligible.some((c: Card) => c.rank === '5')).toBe(true);
+      expect(returnRequiredData.eligible.some((c: Card) => c.rank === 'A')).toBe(false);
+      
+      // Let's player 0 return the '5' card
+      const returnCard = returnRequiredData.eligible.find((c: Card) => c.rank === '5');
+      session.submitTributeCard(returnCard);
+
+      // The card '5' should be transferred to player 3
+      expect(session.playerHands[3].some(c => c.rank === '5')).toBe(true);
+      expect(session.playerHands[0].some(c => c.rank === '5')).toBe(false);
+
+      // Advance timers to end tribute phase
+      vi.advanceTimersByTime(1200);
+
+      // After single tribute, the starting player should be the payer (player 3)
+      expect(session.phase).toBe('PLAYING');
+      expect(session.currentPlayer).toBe(3);
+
+      vi.useRealTimers();
+    });
+  });
+
+  describe('Tribute Stage (双贡 / Double Tribute)', () => {
+    it('should assign larger tribute card to 1st place and smaller to 2nd place, and starting player is the one who paid larger card', () => {
+      vi.useFakeTimers();
+      const session = new GameSession();
+      
+      session.levelTeamA = 3;
+      // Double upstream: 1st player 0, 2nd player 2, losers: 3 and 1
+      session.lastRoundFinishedPlayers = [0, 2, 1, 3];
+
+      // Mock player hands (3 and 1 are payers)
+      session.playerHands = [
+        [{ suit: 'S', rank: '5' }], // player 0 (1st)
+        [{ suit: 'S', rank: 'K' }], // player 1 (third, largest card is King, weight 13)
+        [{ suit: 'S', rank: '6' }], // player 2 (2nd)
+        [{ suit: 'S', rank: 'A' }]  // player 3 (last, largest card is Ace, weight 14)
+      ];
+
+      session.checkTribute();
+
+      // Since last (player 3) has Ace (14) and third (player 1) has King (13),
+      // player 3's card is larger. So:
+      // player 3 (last) pays to player 0 (first)
+      // player 1 (third) pays to player 2 (second)
+      expect(session.tributeInfo?.payers).toEqual([3, 1]);
+      expect(session.tributeInfo?.receivers).toEqual([0, 2]);
+
+      // Both payers are AI, they automatically tribute cards sequentially
+      // Advance timer for 1st tribute (player 3 to player 0)
+      vi.advanceTimersByTime(1200);
+      // Advance timer for 2nd tribute (player 1 to player 2)
+      vi.advanceTimersByTime(1200);
+
+      // Now it should be waiting return
+      expect(session.tributeInfo?.status).toBe('WAITING_RETURN');
+
+      // Receivers (0 and 2) are player 0 (human) and player 2 (AI).
+      // Since index is 0, it is player 0 returning to payer 3.
+      // Player 0 had '5' (5) and received 'A' (14). Since '5' <= 10, it must return '5'.
+      // For AI (player 2), it will automatically return its smallest card <= 10.
+      
+      // Player 0 returns its card
+      session.submitTributeCard({ suit: 'S', rank: '5' });
+
+      // Advance timers for player 0 return
+      vi.advanceTimersByTime(1200);
+      // Advance timers for player 2 (AI) return
+      vi.advanceTimersByTime(1200);
+
+      // Tribute phase should end.
+      expect(session.phase).toBe('PLAYING');
+      // Player 3 paid Ace (14) and Player 1 paid King (13).
+      // Since Player 3's tribute card was larger, Player 3 should start first!
+      expect(session.currentPlayer).toBe(3);
+
+      vi.useRealTimers();
+    });
+  });
+
+  describe('Anti-Tribute (抗贡)', () => {
+    it('should trigger anti-tribute when losers hold 2 red jokers', () => {
+      const session = new GameSession();
+      session.levelTeamA = 3;
+      session.lastRoundFinishedPlayers = [0, 1, 2, 3]; // Player 3 is payer
+
+      // Player 3 holds both red jokers (since 2 decks, there are exactly 2 red jokers)
+      session.playerHands = [
+        [{ suit: 'S', rank: 'A' }],
+        [{ suit: 'S', rank: 'Q' }],
+        [{ suit: 'S', rank: 'J' }],
+        [{ suit: 'J', rank: 'red_joker' }, { suit: 'J', rank: 'red_joker' }]
+      ];
+
+      let toastMsg = '';
+      session.on('toast', (msg) => {
+        toastMsg = msg;
+      });
+
+      session.checkTribute();
+
+      // Should trigger anti-tribute immediately
+      expect(session.phase).toBe('PLAYING');
+      expect(toastMsg).toContain('抗贡成功');
+      // Starts with previous round's head游 (player 0)
+      expect(session.currentPlayer).toBe(0);
+    });
+  });
+});
