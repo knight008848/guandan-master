@@ -117,5 +117,64 @@ describe('Guandan Rules Unit Tests', () => {
       expect(result).not.toBeNull();
       expect(result?.type).toBe(HAND_TYPES.BOMB);
     });
+
+    it('should respect the new hierarchy: 6+ bomb > straight flush > 5 bomb > 4 bomb', () => {
+      // 4-card bomb of Jacks (weight 11, power 111)
+      const bomb4 = [
+        { suit: 'S', rank: 'J' },
+        { suit: 'D', rank: 'J' },
+        { suit: 'C', rank: 'J' },
+        { suit: 'H', rank: 'J' }
+      ];
+      
+      // 5-card bomb of 4s (weight 4, power 204)
+      const bomb5 = [
+        { suit: 'S', rank: '4' },
+        { suit: 'D', rank: '4' },
+        { suit: 'C', rank: '4' },
+        { suit: 'H', rank: '4' },
+        { suit: 'D', rank: '4' }
+      ];
+
+      // Straight flush (同花顺) 2-3-4-5-6 of Spades (straightVal 6, power 306)
+      const straightFlush = [
+        { suit: 'S', rank: '2' },
+        { suit: 'S', rank: '3' },
+        { suit: 'S', rank: '4' },
+        { suit: 'S', rank: '5' },
+        { suit: 'S', rank: '6' }
+      ];
+
+      // 6-card bomb of 3s (weight 3, power 403)
+      const bomb6 = [
+        { suit: 'S', rank: '3' },
+        { suit: 'D', rank: '3' },
+        { suit: 'C', rank: '3' },
+        { suit: 'H', rank: '3' },
+        { suit: 'S', rank: '3' },
+        { suit: 'D', rank: '3' }
+      ];
+
+      // 1. 5-card bomb beats 4-card bomb
+      const combo4 = canPlay(bomb4, null, '10')!;
+      expect(canPlay(bomb5, combo4, '10')).not.toBeNull();
+
+      // 2. Straight flush beats 5-card bomb
+      const combo5 = canPlay(bomb5, null, '10')!;
+      const comboSF = canPlay(straightFlush, combo5, '10');
+      expect(comboSF).not.toBeNull();
+      expect(comboSF?.name).toBe('同花顺');
+
+      // 3. 5-card bomb does not beat straight flush
+      expect(canPlay(bomb5, comboSF, '10')).toBeNull();
+
+      // 4. 6-card bomb beats straight flush
+      const combo6 = canPlay(bomb6, comboSF, '10');
+      expect(combo6).not.toBeNull();
+      expect(combo6?.name).toBe('6张炸弹');
+
+      // 5. Straight flush does not beat 6-card bomb
+      expect(canPlay(straightFlush, combo6, '10')).toBeNull();
+    });
   });
 });
