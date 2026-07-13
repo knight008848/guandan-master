@@ -45,6 +45,35 @@ describe('Guandan AI Unit Tests', () => {
       expect(groups.bombs.length).toBe(1);
       expect(groups.bombs[0].length).toBe(4); // Sky bomb!
     });
+
+    it('should extract wildcard-substituted combinations (straight flush, pairs, etc.)', () => {
+      // currentRank = '10'
+      // Hand: Spades 5, Spades 6, Spades 7, Spades 8, Hearts 10 (wildcard)
+      // And a single Spade 3.
+      const hand: Card[] = [
+        { suit: 'S', rank: '5' },
+        { suit: 'S', rank: '6' },
+        { suit: 'S', rank: '7' },
+        { suit: 'S', rank: '8' },
+        { suit: 'H', rank: '10' }, // Wildcard
+        { suit: 'S', rank: '3' },  // Single Spade 3
+      ];
+
+      const groups = extractCardGroups(hand, '10');
+
+      // 1. Should find 3 straight flushes as bombs (3-4-5-6-7, 4-5-6-7-8, 5-6-7-8-9)
+      expect(groups.bombs.length).toBe(3);
+      expect(groups.bombs[0].length).toBe(5);
+      
+      // 2. Should find 3 normal straights
+      expect(groups.straights.length).toBe(3);
+      expect(groups.straights[0].length).toBe(5);
+
+      // 3. Should find virtual pair (Spade 3 + Hearts 10 as wildcard Spade 3)
+      const pairOfThrees = groups.pairs.find(p => p.some(c => c.rank === '3'));
+      expect(pairOfThrees).toBeDefined();
+      expect(pairOfThrees?.length).toBe(2);
+    });
   });
 
   describe('aiChoosePlay / aiFollowPlay', () => {

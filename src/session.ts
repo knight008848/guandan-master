@@ -52,10 +52,10 @@ export class GameSession extends EventEmitter {
 
   constructor() {
     super();
-    // 随机生成 5 字名字并附带身份标识
-    this.players[1].name = `${generateRandomName()} (AI)`;
-    this.players[2].name = `${generateRandomName()} (AI)`;
-    this.players[3].name = `${generateRandomName()} (AI)`;
+    // 随机生成 5 字名字并附带身份和团队标识
+    this.players[1].name = `${generateRandomName()} (对手/AI)`;
+    this.players[2].name = `${generateRandomName()} (队友/AI)`;
+    this.players[3].name = `${generateRandomName()} (对手/AI)`;
   }
 
   public initGame() {
@@ -108,11 +108,15 @@ export class GameSession extends EventEmitter {
     setTimeout(() => {
       this.emit('deal_finished', this.playerHands);
       
-      // 第一局无进贡直接开打
+      // 第一局无进贡直接开打，通过随机数决定首发玩家
       if (this.lastRoundFinishedPlayers.length === 0) {
         this.phase = 'PLAYING';
-        this.currentPlayer = 0;
+        this.currentPlayer = Math.floor(Math.random() * 4);
         this.emit('turn_started', this.currentPlayer, true, null);
+        
+        if (this.players[this.currentPlayer].isAI) {
+          setTimeout(() => this.executeAILogic(), 1400);
+        }
       } else {
         this.checkTribute();
       }
@@ -380,6 +384,10 @@ export class GameSession extends EventEmitter {
     this.currentPlayer = startingPlayer;
     this.emit('tribute_finished', this.currentPlayer);
     this.emit('turn_started', this.currentPlayer, true, null);
+
+    if (this.players[this.currentPlayer].isAI) {
+      setTimeout(() => this.executeAILogic(), 1400);
+    }
   }
 
   // 玩家/AI 动作接口
