@@ -38,6 +38,7 @@ export class GameSession extends EventEmitter {
   public currentWinnerIndex = 0;
   public passCount = 0;
   public finishedPlayers: number[] = []; // [first, second, third, last]
+  public lastRoundFinishedPlayers: number[] = []; // 记录上一局的最终排名，用于进贡逻辑
 
   public tributeInfo: TributeInfo | null = null;
   public selectedTributeCard: Card | null = null;
@@ -104,7 +105,7 @@ export class GameSession extends EventEmitter {
       this.emit('deal_finished', this.playerHands);
       
       // 第一局无进贡直接开打
-      if (this.levelTeamA === 2 && this.levelTeamB === 2 && this.finishedPlayers.length === 0) {
+      if (this.lastRoundFinishedPlayers.length === 0) {
         this.phase = 'PLAYING';
         this.currentPlayer = 0;
         this.emit('turn_started', this.currentPlayer, true, null);
@@ -118,9 +119,10 @@ export class GameSession extends EventEmitter {
   private checkTribute() {
     this.phase = 'TRIBUTE';
     
-    const last = this.finishedPlayers[3] !== undefined ? this.finishedPlayers[3] : this.getRemainingPlayerIndex();
-    const first = this.finishedPlayers[0];
-    const second = this.finishedPlayers[1];
+    const first = this.lastRoundFinishedPlayers[0];
+    const second = this.lastRoundFinishedPlayers[1];
+    const third = this.lastRoundFinishedPlayers[2];
+    const last = this.lastRoundFinishedPlayers[3];
 
     const isDoubleUpstream = (first === 0 && second === 2) || 
                              (first === 2 && second === 0) ||
@@ -128,17 +130,38 @@ export class GameSession extends EventEmitter {
                              (first === 3 && second === 1);
 
     if (isDoubleUpstream) {
-      const winners = [first, second];
-      const losers = [this.finishedPlayers[2], last];
-      this.setupTribute(losers, winners, true);
+
+      // 比较进贡牌大小，决定分发对象（大贡给头游，小贡给二游）
+      const eligibleThird = this.playerHands[third].filter(c => !isWildCard(c, this.currentRank));
+      const sortedThird = sortCards(eligibleThird, this.currentRank);
+      const maxCardThird = sortedThird[0];
+
+      const eligibleLast = this.playerHands[last].filter(c => !isWildCard(c, this.currentRank));
+      const sortedLast = sortCards(eligibleLast, this.currentRank);
+      const maxCardLast = sortedLast[0];
+
+      const weightThird = maxCardThird ? getCardWeight(maxCardThird.rank, this.currentRank) : 0;
+      const weightLast = maxCardLast ? getCardWeight(maxCardLast.rank, this.currentRank) : 0;
+
+      let payersList: number[] = [];
+      let receiversList: number[] = [];
+
+      if (weightLast > weightThird) {
+        // 末游(last)进贡的牌更大，给头游(first)；三游(third)给二游(second)
+        payersList = [last, third];
+        receiversList = [first, second];
+      } else {
+        // 三游(third)进贡的牌更大或相等，给头游(first)；末游(last)给二游(second)
+        payersList = [third, last];
+        receiversList = [first, second];
+      }
+
+      this.setupTribute(payersList, receiversList, true);
     } else {
       this.setupTribute([last], [first], false);
     }
   }
 
-  private getRemainingPlayerIndex(): number {
-    return [0, 1, 2, 3].find(p => !this.finishedPlayers.includes(p)) || 0;
-  }
 
   private setupTribute(payers: number[], receivers: number[], isDouble: boolean) {
     this.tributeInfo = {
@@ -184,10 +207,14 @@ export class GameSession extends EventEmitter {
     }
 
     if (payer === 0) {
-      // 玩家进贡，派发UI选择事件
+      // 玩家进贡，派发UI选择事件：只允许玩家选择最大点数的非逢人配卡牌
       const eligible = this.playerHands[0].filter(c => !isWildCard(c, this.currentRank));
       const sorted = sortCards(eligible, this.currentRank);
-      this.emit('tribute_required', '请选择您手牌中最大的一张牌进行进贡：', sorted.slice(0, 5));
+      if (sorted.length > 0) {
+        const maxWeight = getCardWeight(sorted[0].rank, this.currentRank);
+        const maxWeightCards = sorted.filter(c => getCardWeight(c.rank, this.currentRank) === maxWeight);
+        this.emit('tribute_required', '请选择您手牌中最大的一张牌进行进贡：', maxWeightCards);
+      }
     } else {
       // AI 进贡
       const eligible = this.playerHands[payer].filter(c => !isWildCard(c, this.currentRank));
@@ -208,10 +235,43 @@ export class GameSession extends EventEmitter {
     if (info.status === 'WAITING_TRIBUTE') {
       const payer = info.payers[info.index];
       const receiver = info.receivers[info.index];
+
+      // 验证玩家进贡卡牌合法性（防止越权选择小牌）
+      if (payer === 0) {
+        const eligible = this.playerHands[0].filter(c => !isWildCard(c, this.currentRank));
+        const sorted = sortCards(eligible, this.currentRank);
+        if (sorted.length > 0) {
+          const maxWeight = getCardWeight(sorted[0].rank, this.currentRank);
+          if (getCardWeight(card.rank, this.currentRank) !== maxWeight || isWildCard(card, this.currentRank)) {
+            this.emit('toast', '进贡牌不符合规则，必须是手上的最大牌！');
+            return;
+          }
+        }
+      }
+
       this.executeTribute(payer, receiver, card);
     } else {
       const receiver = info.receivers[info.index];
       const payer = info.payers[info.index];
+
+      // 验证玩家退贡/还牌卡牌合法性
+      if (receiver === 0) {
+        const hasUnder10 = this.playerHands[0].some(c => getCardWeight(c.rank, this.currentRank) <= 10 && !isWildCard(c, this.currentRank));
+        if (hasUnder10) {
+          if (getCardWeight(card.rank, this.currentRank) > 10 || isWildCard(card, this.currentRank)) {
+            this.emit('toast', '退贡牌不符合规则，必须 ≤10 的非逢人配牌！');
+            return;
+          }
+        } else {
+          const sortedHand = sortCards(this.playerHands[0], this.currentRank);
+          const minWeight = getCardWeight(sortedHand[sortedHand.length - 1].rank, this.currentRank);
+          if (getCardWeight(card.rank, this.currentRank) !== minWeight) {
+            this.emit('toast', '退贡牌不符合规则，在没有 ≤10 牌的情况下，必须退还手上最小的牌！');
+            return;
+          }
+        }
+      }
+
       this.executeReturn(receiver, payer, card);
     }
   }
@@ -248,8 +308,16 @@ export class GameSession extends EventEmitter {
       const eligible = this.playerHands[0].filter(c => {
         return getCardWeight(c.rank, this.currentRank) <= 10 && !isWildCard(c, this.currentRank);
       });
-      const sorted = sortCards(eligible.length > 0 ? eligible : this.playerHands[0], this.currentRank);
-      this.emit('return_required', `请退还一张卡牌给 ${this.players[payer].name}（需≤10）：`, sorted);
+      let choices: Card[] = [];
+      if (eligible.length > 0) {
+        choices = sortCards(eligible, this.currentRank);
+      } else {
+        // 如果没有 <= 10 的牌，必须还最小的牌（多张同点数可选不同花色）
+        const sortedHand = sortCards(this.playerHands[0], this.currentRank);
+        const minWeight = getCardWeight(sortedHand[sortedHand.length - 1].rank, this.currentRank);
+        choices = sortedHand.filter(c => getCardWeight(c.rank, this.currentRank) === minWeight);
+      }
+      this.emit('return_required', `请退还一张卡牌给 ${this.players[payer].name}（需≤10）：`, choices);
     } else {
       // AI 退贡
       const eligible = this.playerHands[receiver].filter(c => {
@@ -278,8 +346,34 @@ export class GameSession extends EventEmitter {
 
   private endTributePhase() {
     this.phase = 'PLAYING';
-    // 进贡大者先出牌，这里做简化设定：由上一局的头游先出
-    this.currentPlayer = this.finishedPlayers[0] !== undefined ? this.finishedPlayers[0] : 0;
+    
+    // 进贡后首发权判定规则：
+    // 1. 如果是抗贡（paidCards 为空），直接由上一局的头游（1st place）先出牌；
+    // 2. 如果是单贡/内贡，由进贡者（payer）先出牌；
+    // 3. 如果是双贡，由进贡卡牌点数大的一方先出牌；若大小一致，由进贡给头游的玩家先出牌。
+    let startingPlayer = this.lastRoundFinishedPlayers[0] !== undefined ? this.lastRoundFinishedPlayers[0] : 0;
+
+    if (this.tributeInfo && this.tributeInfo.paidCards.length > 0) {
+      if (this.tributeInfo.isDouble) {
+        const p1 = this.tributeInfo.paidCards[0]; // 进贡给头游的记录
+        const p2 = this.tributeInfo.paidCards[1]; // 进贡给二游的记录
+        if (p1 && p2) {
+          const w1 = getCardWeight(p1.card.rank, this.currentRank);
+          const w2 = getCardWeight(p2.card.rank, this.currentRank);
+          if (w1 > w2) {
+            startingPlayer = p1.payer;
+          } else if (w2 > w1) {
+            startingPlayer = p2.payer;
+          } else {
+            startingPlayer = p1.payer; // 相等时，进给头游的玩家先出牌
+          }
+        }
+      } else {
+        startingPlayer = this.tributeInfo.payers[0];
+      }
+    }
+
+    this.currentPlayer = startingPlayer;
     this.emit('tribute_finished', this.currentPlayer);
     this.emit('turn_started', this.currentPlayer, true, null);
   }
@@ -426,6 +520,16 @@ export class GameSession extends EventEmitter {
 
   private endRound(winTeamIdx: number) {
     this.phase = 'ROUND_END';
+
+    // 记录本局排名并补齐未出完牌的玩家，供下局进贡使用
+    const fullFinished = [...this.finishedPlayers];
+    [0, 1, 2, 3].forEach(p => {
+      if (!fullFinished.includes(p)) {
+        fullFinished.push(p);
+      }
+    });
+    this.lastRoundFinishedPlayers = fullFinished;
+
     const first = this.finishedPlayers[0];
     const second = this.finishedPlayers[1];
 
@@ -469,12 +573,14 @@ export class GameSession extends EventEmitter {
       this.levelTeamB = 2;
       this.currentRank = '2';
       this.finishedPlayers = [];
+      this.lastRoundFinishedPlayers = [];
     } else if (this.levelTeamB === 14 && (this.finishedPlayers[0] === 1 || this.finishedPlayers[0] === 3)) {
       this.emit('toast', '很遗憾，对手打过了 A 赢得了最终胜利。重新开始新游戏。');
       this.levelTeamA = 2;
       this.levelTeamB = 2;
       this.currentRank = '2';
       this.finishedPlayers = [];
+      this.lastRoundFinishedPlayers = [];
     }
 
     this.initGame();
