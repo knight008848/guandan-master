@@ -513,15 +513,9 @@ export class GameSession extends EventEmitter {
     const teamAFinished = this.finishedPlayers.filter(p => p === 0 || p === 2).length;
     const teamBFinished = this.finishedPlayers.filter(p => p === 1 || p === 3).length;
 
-    if (teamAFinished === 2) {
-      this.endRound(0);
-      return true;
-    }
-    if (teamBFinished === 2) {
-      this.endRound(1);
-      return true;
-    }
-    if (this.finishedPlayers.length === 3) {
+    // 当任意一方有两人出完，或者已有三人出完牌时，本局结束
+    if (teamAFinished === 2 || teamBFinished === 2 || this.finishedPlayers.length === 3) {
+      // 掼蛋规则：头游（第一名）所在的队伍获得本局胜利！
       const winner = this.finishedPlayers[0];
       const winTeam = (winner === 0 || winner === 2) ? 0 : 1;
       this.endRound(winTeam);
@@ -557,9 +551,11 @@ export class GameSession extends EventEmitter {
       isDouble = true;
     } else {
       const partnerIndex = (first + 2) % 4;
-      if (second === partnerIndex) {
+      // 如果第三个出完牌的玩家是头游的队友，则为 1st 和 3rd 胜出，升 2 级
+      if (this.finishedPlayers[2] === partnerIndex) {
         upgradeLevels = 2;
       }
+      // 否则为 1st 和 4th 胜出，升 1 级
     }
 
     let finalRankStr = this.finishedPlayers.map((p, i) => `${i + 1}. ${this.players[p].name}`).join('<br>');

@@ -78,7 +78,9 @@ export class DOMRenderer {
     });
 
     this.session.on('tribute_finished', () => {
-      document.getElementById('tribute-overlay')?.classList.remove('show');
+      const overlay = document.getElementById('tribute-overlay');
+      overlay?.classList.remove('show');
+      overlay?.classList.remove('tribute-mode');
     });
 
     this.session.on('turn_started', (playerIdx: number, isLead: boolean) => {
@@ -451,12 +453,15 @@ export class DOMRenderer {
     });
 
     overlay.classList.add('show');
+    overlay.classList.add('tribute-mode');
   }
 
   private handleConfirmTribute() {
     if (!this.selectedTributeCard) return;
     this.session.submitTributeCard(this.selectedTributeCard);
-    document.getElementById('tribute-overlay')?.classList.remove('show');
+    const overlay = document.getElementById('tribute-overlay');
+    overlay?.classList.remove('show');
+    overlay?.classList.remove('tribute-mode');
   }
 
   // 结算弹窗控制

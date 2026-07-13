@@ -175,4 +175,58 @@ describe('GameSession Integration and Flow Tests', () => {
       expect(session.currentPlayer).toBe(0);
     });
   });
+
+  describe('Round End Win and Level Upgrade Rules', () => {
+    it('should award win to Team A and upgrade by 1 level when finishing order is 1st (0) and 4th (2)', () => {
+      const session = new GameSession();
+      session.initGame();
+      
+      // Simulate player 0 finishing 1st, player 1 finishing 2nd, player 3 finishing 3rd
+      session.finishedPlayers = [0, 1, 3];
+      
+      // Trigger checkRoundEnd
+      const ended = (session as any).checkRoundEnd();
+      
+      expect(ended).toBe(true);
+      expect(session.phase).toBe('ROUND_END');
+      
+      // Since Team A got 1st (0) and 4th (2), Team A (levelTeamA) should win and upgrade by 1 level (from 2 to 3)
+      expect(session.levelTeamA).toBe(3);
+      expect(session.levelTeamB).toBe(2);
+    });
+
+    it('should award win to Team A and upgrade by 2 levels when finishing order is 1st (0) and 3rd (2)', () => {
+      const session = new GameSession();
+      session.initGame();
+      
+      // Simulate player 0 finishing 1st, player 1 finishing 2nd, player 2 finishing 3rd
+      session.finishedPlayers = [0, 1, 2];
+      
+      const ended = (session as any).checkRoundEnd();
+      
+      expect(ended).toBe(true);
+      expect(session.phase).toBe('ROUND_END');
+      
+      // Since Team A got 1st (0) and 3rd (2), Team A should win and upgrade by 2 levels (from 2 to 4)
+      expect(session.levelTeamA).toBe(4);
+      expect(session.levelTeamB).toBe(2);
+    });
+
+    it('should award win to Team B and upgrade by 3 levels when Team B gets 1st (1) and 2nd (3) [Double Upstream]', () => {
+      const session = new GameSession();
+      session.initGame();
+      
+      // Simulate Player 1 finishing 1st, Player 3 finishing 2nd
+      session.finishedPlayers = [1, 3];
+      
+      const ended = (session as any).checkRoundEnd();
+      
+      expect(ended).toBe(true);
+      expect(session.phase).toBe('ROUND_END');
+      
+      // Since Team B got 1st and 2nd, Team B (levelTeamB) should win and upgrade by 3 levels (from 2 to 5)
+      expect(session.levelTeamB).toBe(5);
+      expect(session.levelTeamA).toBe(2);
+    });
+  });
 });

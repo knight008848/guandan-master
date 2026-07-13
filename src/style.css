@@ -796,3 +796,52 @@ body {
   border-left-color: #ff5252;
   background: rgba(255, 82, 82, 0.05);
 }
+
+/* 进退贡界面专属透明样式 (不遮挡底部手牌且卡牌美观重叠) */
+.overlay-screen.tribute-mode {
+  backdrop-filter: none !important;
+  background: rgba(10, 25, 15, 0.4) !important;
+  align-items: flex-start !important;
+  padding-top: 100px;
+}
+
+.tribute-mode .dialog-box {
+  width: 660px !important;
+  max-width: 90% !important;
+  border-color: #64ffda !important;
+  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.6), 0 0 20px rgba(100, 255, 218, 0.4) !important;
+  background: rgba(15, 30, 22, 0.95) !important;
+}
+
+#tribute-cards-choice {
+  display: flex !important;
+  justify-content: center !important;
+  flex-wrap: wrap !important;
+  gap: 0 !important; /* 取消大间隔，使用负 margin 实现像手牌一样的叠牌效果 */
+  margin: 25px 0 !important;
+  padding: 10px 30px !important;
+}
+
+#tribute-cards-choice .card {
+  margin-right: -42px !important; /* 经典重叠负边距 */
+  transform: scale(0.85);
+  transition: transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1), margin-top 0.2s, box-shadow 0.2s;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3) !important;
+}
+
+#tribute-cards-choice .card:last-child {
+  margin-right: 0 !important;
+}
+
+#tribute-cards-choice .card:hover {
+  transform: scale(0.95) translateY(-10px) !important;
+  z-index: 100 !important;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5) !important;
+}
+
+#tribute-cards-choice .card.selected {
+  transform: scale(0.95) translateY(-25px) !important;
+  border: 2px solid #64ffda !important;
+  box-shadow: 0 0 15px rgba(100, 255, 218, 0.8), 0 10px 20px rgba(0, 0, 0, 0.5) !important;
+  z-index: 95 !important;
+}
