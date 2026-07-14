@@ -340,7 +340,7 @@ describe('GameSession Integration and Flow Tests', () => {
       // Since it is first play, AI chooses to play. Here the hand has two Aces (A and A), which is a pair of Aces.
       // Hand: S-A, D-A. It should play the pair of Aces.
       expect(session.lastPlay).not.toBeNull();
-      expect(session.lastPlay?.playerIndex).toBe(0);
+      expect((session.lastPlay as any)?.playerIndex).toBe(0);
       expect(session.playerHands[0].length).toBe(0); // All cards played
     });
 

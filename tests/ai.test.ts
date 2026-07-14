@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { Card } from '../src/types';
+import { Card, PlayerStateView } from '../src/types';
 import { extractCardGroups, aiChoosePlay, aiFollowPlay } from '../src/ai';
 import { HAND_TYPES } from '../src/rules';
 
@@ -78,7 +78,7 @@ describe('Guandan AI Unit Tests', () => {
 
   describe('aiChoosePlay / aiFollowPlay', () => {
     it('should pass if teammate is currently winning and last play is high weight', () => {
-      const view = {
+      const view: PlayerStateView = {
         hand: [
           { suit: 'S', rank: 'J' },
           { suit: 'D', rank: 'Q' }

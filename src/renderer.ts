@@ -327,8 +327,8 @@ export class DOMRenderer {
 
     if (rankLabel) rankLabel.textContent = this.session.currentRank;
     if (wildLabel) wildLabel.textContent = this.session.currentRank;
-    if (ourLevel) ourLevel.textContent = this.getRankName(this.session.levelTeamA);
-    if (enemyLevel) enemyLevel.textContent = this.getRankName(this.session.levelTeamB);
+    if (ourLevel) ourLevel.textContent = this.getRankName(this.session.levelTeamA, this.session.failCountTeamA);
+    if (enemyLevel) enemyLevel.textContent = this.getRankName(this.session.levelTeamB, this.session.failCountTeamB);
 
     if (phaseLabel) {
       let phaseStr = '打牌阶段';
@@ -625,7 +625,10 @@ export class DOMRenderer {
   }
 
   // 辅助转化器
-  private getRankName(val: number): string {
+  private getRankName(val: number, failCount: number = 0): string {
+    if (val === 14) {
+      return `A${failCount + 1}`;
+    }
     const map: Record<number, string> = {
       2: '2', 3: '3', 4: '4', 5: '5', 6: '6', 7: '7', 8: '8', 9: '9', 10: '10',
       11: 'J', 12: 'Q', 13: 'K', 14: 'A'

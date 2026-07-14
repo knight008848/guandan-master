@@ -92,7 +92,7 @@ describe('Guandan Rules Unit Tests', () => {
   describe('canPlay', () => {
     it('should allow playing a higher card of the same type', () => {
       const lastPlay = { type: HAND_TYPES.SINGLE, power: 10, cardCount: 1 };
-      const currentCards = [{ suit: 'S', rank: 'J' }]; // weight 11
+      const currentCards: Card[] = [{ suit: 'S', rank: 'J' }]; // weight 11
       const result = canPlay(currentCards, lastPlay, '2');
       expect(result).not.toBeNull();
       expect(result?.type).toBe(HAND_TYPES.SINGLE);
@@ -100,14 +100,14 @@ describe('Guandan Rules Unit Tests', () => {
 
     it('should not allow playing a lower card of the same type', () => {
       const lastPlay = { type: HAND_TYPES.SINGLE, power: 12, cardCount: 1 }; // Queen
-      const currentCards = [{ suit: 'S', rank: 'J' }]; // Jack
+      const currentCards: Card[] = [{ suit: 'S', rank: 'J' }]; // Jack
       const result = canPlay(currentCards, lastPlay, '2');
       expect(result).toBeNull();
     });
 
     it('should allow a bomb to beat a normal type', () => {
       const lastPlay = { type: HAND_TYPES.PAIR, power: 14, cardCount: 2 }; // Pair of Aces
-      const bomb = [
+      const bomb: Card[] = [
         { suit: 'S', rank: '5' },
         { suit: 'D', rank: '5' },
         { suit: 'C', rank: '5' },
@@ -120,7 +120,7 @@ describe('Guandan Rules Unit Tests', () => {
 
     it('should respect the new hierarchy: 6+ bomb > straight flush > 5 bomb > 4 bomb', () => {
       // 4-card bomb of Jacks (weight 11, power 111)
-      const bomb4 = [
+      const bomb4: Card[] = [
         { suit: 'S', rank: 'J' },
         { suit: 'D', rank: 'J' },
         { suit: 'C', rank: 'J' },
@@ -128,7 +128,7 @@ describe('Guandan Rules Unit Tests', () => {
       ];
       
       // 5-card bomb of 4s (weight 4, power 204)
-      const bomb5 = [
+      const bomb5: Card[] = [
         { suit: 'S', rank: '4' },
         { suit: 'D', rank: '4' },
         { suit: 'C', rank: '4' },
@@ -137,7 +137,7 @@ describe('Guandan Rules Unit Tests', () => {
       ];
 
       // Straight flush (同花顺) 2-3-4-5-6 of Spades (straightVal 6, power 306)
-      const straightFlush = [
+      const straightFlush: Card[] = [
         { suit: 'S', rank: '2' },
         { suit: 'S', rank: '3' },
         { suit: 'S', rank: '4' },
@@ -146,7 +146,7 @@ describe('Guandan Rules Unit Tests', () => {
       ];
 
       // 6-card bomb of 3s (weight 3, power 403)
-      const bomb6 = [
+      const bomb6: Card[] = [
         { suit: 'S', rank: '3' },
         { suit: 'D', rank: '3' },
         { suit: 'C', rank: '3' },
@@ -180,7 +180,7 @@ describe('Guandan Rules Unit Tests', () => {
     it('should detect straight flush with wild card', () => {
       // currentRank = '10'
       // Hand: Spades 5, Spades 6, Spades 7, Spades 8, Hearts 10 (wild card)
-      const cards = [
+      const cards: Card[] = [
         { suit: 'S', rank: '5' },
         { suit: 'S', rank: '6' },
         { suit: 'S', rank: '7' },
@@ -196,7 +196,7 @@ describe('Guandan Rules Unit Tests', () => {
     it('should allow normal level cards to be included in a straight', () => {
       // currentRank = '8'
       // Hand: Spades 5, Diamonds 6, Clubs 7, Spades 8 (normal 8), Spades 9 (mixed suits)
-      const cards = [
+      const cards: Card[] = [
         { suit: 'S', rank: '5' },
         { suit: 'D', rank: '6' },
         { suit: 'C', rank: '7' },

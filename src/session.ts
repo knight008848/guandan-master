@@ -169,7 +169,7 @@ export class GameSession extends EventEmitter {
   }
 
   // 进贡判定
-  private checkTribute() {
+  public checkTribute() {
     this.phase = 'TRIBUTE';
     
     const first = this.lastRoundFinishedPlayers[0];
