@@ -60,3 +60,11 @@
   - 引入 Stylelint 校验 `src/style.css`，杜绝冗余样式与不兼容属性定义。
 - [ ] **配置 Git Hooks 提交校验 (Husky & lint-staged)**：
   - 配置 Git 挂钩，在 `commit` 时仅对暂存区变动文件进行 Lint 修复，确保入库代码 100% 规范。
+
+---
+
+## 🧪 自动化测试与质量保障 (Testing & Quality Assurance)
+- [ ] **测试框架演进：集成 JSDOM/Happy DOM 内存仿真环境**：
+  - 引入 `jsdom` 或 `happy-dom` 到 Vitest 测试配置中。
+  - 编写针对 `DOMRenderer` 视图层的单元测试，直接验证 DOM 节点的渲染（如 A1/A2/A3 级别展示、弹窗定位与控制面板状态等）。
+  - 用内存 DOM 单元测试替代部分依赖真实浏览器的 Playwright 页面截图测试，消除代理占用及 Git 推送身份认证冲突的问题。
