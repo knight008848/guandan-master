@@ -421,5 +421,51 @@ describe('GameSession Integration and Flow Tests', () => {
       expect(session.currentRank).toBe('A');
       expect(session.failCountTeamA).toBe(0);
     });
+
+    it('should correctly upgrade from J to A with 3 levels upgrade without triggering A-rank resolve and resetting to level 2', () => {
+      const session = new GameSession();
+      session.initGame();
+
+      // Setup state: we are currently playing J (level 11)
+      session.levelTeamA = 11;
+      session.currentRank = 'J';
+
+      // We win with double upstream (upgrade 3 levels)
+      session.finishedPlayers = [0, 2];
+
+      const ended = (session as any).checkRoundEnd();
+      expect(ended).toBe(true);
+      expect(session.levelTeamA).toBe(14); // 11 + 3 = 14 (A)
+      expect(session.currentRank).toBe('J');
+
+      session.startNextRound();
+
+      expect(session.levelTeamA).toBe(14);
+      expect(session.currentRank).toBe('A');
+      expect(session.failCountTeamA).toBe(0);
+    });
+
+    it('should correctly upgrade from K to A with 2 levels upgrade without triggering A-rank resolve and resetting to level 2', () => {
+      const session = new GameSession();
+      session.initGame();
+
+      // Setup state: we are currently playing K (level 13)
+      session.levelTeamA = 13;
+      session.currentRank = 'K';
+
+      // We win with 2 levels upgrade (1st and 3rd)
+      session.finishedPlayers = [0, 2, 1];
+
+      const ended = (session as any).checkRoundEnd();
+      expect(ended).toBe(true);
+      expect(session.levelTeamA).toBe(14); // 13 + 2 = 15 -> capped to 14 (A)
+      expect(session.currentRank).toBe('K');
+
+      session.startNextRound();
+
+      expect(session.levelTeamA).toBe(14);
+      expect(session.currentRank).toBe('A');
+      expect(session.failCountTeamA).toBe(0);
+    });
   });
 });
