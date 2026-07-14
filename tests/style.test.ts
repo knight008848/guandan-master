@@ -4,7 +4,7 @@ import * as path from 'path';
 
 describe('UI Style Design Compliance Tests', () => {
   it('should position the toast-container in the top-left corner to prevent blocking active elements', () => {
-    const cssPath = path.resolve(__dirname, '../src/style.css');
+    const cssPath = path.resolve('src/style.css');
     const cssContent = fs.readFileSync(cssPath, 'utf-8');
     
     // Extract CSS rules inside .toast-container { ... }
