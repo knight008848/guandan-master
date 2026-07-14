@@ -602,8 +602,7 @@ body {
 .toast-container {
   position: fixed;
   top: 80px;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 20px;
   display: flex;
   flex-direction: column;
   gap: 10px;
