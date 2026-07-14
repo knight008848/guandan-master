@@ -801,8 +801,7 @@ body {
 .overlay-screen.tribute-mode {
   backdrop-filter: none !important;
   background: rgba(10, 25, 15, 0.4) !important;
-  align-items: flex-start !important;
-  padding-top: 100px;
+  align-items: center !important;
 }
 
 .tribute-mode .dialog-box {

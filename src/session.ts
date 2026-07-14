@@ -608,11 +608,9 @@ export class GameSession extends EventEmitter {
     if (winTeamIdx === 0) {
       this.levelTeamA += upgradeLevels;
       if (this.levelTeamA > 14) this.levelTeamA = 14;
-      this.currentRank = getRankChar(this.levelTeamA);
     } else {
       this.levelTeamB += upgradeLevels;
       if (this.levelTeamB > 14) this.levelTeamB = 14;
-      this.currentRank = getRankChar(this.levelTeamB);
     }
 
     this.emit('round_ended', winTeamIdx, upgradeLevels, isDouble, finalRankStr);

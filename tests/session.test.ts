@@ -342,5 +342,34 @@ describe('GameSession Integration and Flow Tests', () => {
       // Takeover state should be reset
       expect(session.players[0].isAI).toBe(false);
     });
+
+    it('should correctly upgrade from Q to A without triggering A-rank resolve and resetting to level 2', () => {
+      const session = new GameSession();
+      session.initGame();
+
+      // Setup state: we are currently playing Q (level 12)
+      session.levelTeamA = 12;
+      session.currentRank = 'Q';
+
+      // We win with double upstream (upgrade 3 levels)
+      session.finishedPlayers = [0, 2]; // Team A got 1st and 2nd
+
+      // End the round: levelTeamA will be upgraded from 12 to 15 (capped to 14, i.e., A)
+      const ended = (session as any).checkRoundEnd();
+      expect(ended).toBe(true);
+      expect(session.levelTeamA).toBe(14);
+      // Under the fix, currentRank should still be 'Q' at this point (end of round)
+      expect(session.currentRank).toBe('Q');
+
+      // Start the next round: this is where the previous bug triggered,
+      // because currentRank was incorrectly 'A', prompting A-rank success check and resetting to 2.
+      // Now it should NOT trigger the A-rank check, because currentRank of completed round was 'Q'.
+      session.startNextRound();
+
+      // Assert that we did not get reset to level 2! We should be playing A (14) now.
+      expect(session.levelTeamA).toBe(14);
+      expect(session.currentRank).toBe('A');
+      expect(session.failCountTeamA).toBe(0);
+    });
   });
 });
