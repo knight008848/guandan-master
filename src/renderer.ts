@@ -40,6 +40,7 @@ export class DOMRenderer {
     document.getElementById('btn-confirm-tribute')?.addEventListener('click', () => this.handleConfirmTribute());
     document.getElementById('btn-toggle-log')?.addEventListener('click', () => this.toggleLogPanel());
     document.getElementById('btn-close-log')?.addEventListener('click', () => this.toggleLogPanel());
+    document.getElementById('btn-takeover')?.addEventListener('click', () => this.session.enableAutoPlay());
   }
 
   // 订阅核心引擎抛出的事件
@@ -50,6 +51,22 @@ export class DOMRenderer {
       this.clearPlayZones();
       this.hideControls();
       this.updateStatusUI();
+
+      const btnTakeover = document.getElementById('btn-takeover') as HTMLButtonElement;
+      if (btnTakeover) {
+        btnTakeover.disabled = false;
+        btnTakeover.textContent = '托管对局';
+      }
+    });
+
+    this.session.on('autoplay_enabled', () => {
+      this.hideControls();
+      const btnTakeover = document.getElementById('btn-takeover') as HTMLButtonElement;
+      if (btnTakeover) {
+        btnTakeover.disabled = true;
+        btnTakeover.textContent = '已托管';
+      }
+      this.showToast('已开启自动接管，AI 替您对局！');
     });
 
     this.session.on('deal_finished', (hands: Card[][]) => {
@@ -87,7 +104,7 @@ export class DOMRenderer {
       this.updateStatusUI();
       this.highlightPlayerProfile(playerIdx);
 
-      if (playerIdx === 0) {
+      if (playerIdx === 0 && !this.session.players[0].isAI) {
         this.showControls();
         const btnPass = document.getElementById('btn-pass') as HTMLButtonElement;
         if (btnPass) {

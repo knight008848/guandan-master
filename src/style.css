@@ -845,3 +845,39 @@ body {
   box-shadow: 0 0 15px rgba(100, 255, 218, 0.8), 0 10px 20px rgba(0, 0, 0, 0.5) !important;
   z-index: 95 !important;
 }
+
+/* 托管对局按钮样式 */
+.btn-takeover {
+  background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 20px;
+  padding: 4px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+  font-family: var(--font-family);
+  margin-top: 4px;
+  outline: none;
+}
+
+.btn-takeover:hover {
+  background: linear-gradient(135deg, #ffa726 0%, #fb8c00 100%);
+  box-shadow: 0 0 10px rgba(255, 152, 0, 0.4);
+}
+
+.btn-takeover:active {
+  transform: scale(0.95);
+}
+
+.btn-takeover:disabled {
+  background: #424242 !important;
+  color: #888 !important;
+  border-color: rgba(255, 255, 255, 0.05) !important;
+  cursor: not-allowed !important;
+  pointer-events: none;
+  box-shadow: none !important;
+  transform: none !important;
+}

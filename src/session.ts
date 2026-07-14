@@ -71,8 +71,51 @@ export class GameSession extends EventEmitter {
     this.tributeInfo = null;
     this.selectedTributeCard = null;
 
+    // 重置托管状态，新一局开始时恢复手动操作
+    this.players[0].isAI = false;
+
     this.emit('deal_started');
     this.dealCards();
+  }
+
+  public enableAutoPlay() {
+    if (this.players[0].isAI) return;
+    this.players[0].isAI = true;
+    this.emit('autoplay_enabled');
+
+    // 如果处于打牌阶段，且当前正好轮到玩家出牌，则立即代替玩家出牌
+    if (this.phase === 'PLAYING' && this.currentPlayer === 0) {
+      this.executeAILogic();
+    }
+    // 如果处于进退贡阶段，且当前正是玩家在进贡或退贡，则立即处理
+    if (this.phase === 'TRIBUTE' && this.tributeInfo) {
+      const info = this.tributeInfo;
+      if (info.status === 'WAITING_TRIBUTE') {
+        const payer = info.payers[info.index];
+        if (payer === 0) {
+          const eligible = this.playerHands[0].filter(c => !isWildCard(c, this.currentRank));
+          const sorted = sortCards(eligible, this.currentRank);
+          const card = sorted[0];
+          if (card) {
+            this.emit('tribute_finished'); // 隐藏进贡UI
+            this.executeTribute(0, info.receivers[info.index], card);
+          }
+        }
+      } else if (info.status === 'WAITING_RETURN') {
+        const receiver = info.receivers[info.index];
+        if (receiver === 0) {
+          const eligible = this.playerHands[0].filter(c => {
+            return getCardWeight(c.rank, this.currentRank) <= 10 && !isWildCard(c, this.currentRank);
+          });
+          const sorted = sortCards(eligible.length > 0 ? eligible : this.playerHands[0], this.currentRank);
+          const card = sorted[sorted.length - 1]; // 选最小的退还
+          if (card) {
+            this.emit('tribute_finished'); // 隐藏进贡UI
+            this.executeReturn(0, info.payers[info.index], card);
+          }
+        }
+      }
+    }
   }
 
   private dealCards() {
@@ -216,7 +259,7 @@ export class GameSession extends EventEmitter {
       return;
     }
 
-    if (payer === 0) {
+    if (payer === 0 && !this.players[0].isAI) {
       // 玩家进贡，派发UI选择事件：只允许玩家选择最大点数的非逢人配卡牌
       const eligible = this.playerHands[0].filter(c => !isWildCard(c, this.currentRank));
       const sorted = sortCards(eligible, this.currentRank);
@@ -314,7 +357,7 @@ export class GameSession extends EventEmitter {
     const receiver = info.receivers[info.index];
     const payer = info.payers[info.index];
 
-    if (receiver === 0) {
+    if (receiver === 0 && !this.players[0].isAI) {
       const eligible = this.playerHands[0].filter(c => {
         return getCardWeight(c.rank, this.currentRank) <= 10 && !isWildCard(c, this.currentRank);
       });

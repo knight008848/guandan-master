@@ -261,4 +261,86 @@ describe('GameSession Integration and Flow Tests', () => {
       expect(session.levelTeamA).toBe(2);
     });
   });
+
+  describe('Autoplay / Takeover (托管功能)', () => {
+    it('should toggle takeover state and execute AI logic for player 0 immediately when enabled on their turn', () => {
+      const session = new GameSession();
+      session.phase = 'PLAYING';
+      session.currentPlayer = 0;
+      session.currentWinnerIndex = 0;
+      session.lastPlay = null;
+
+      // Mock player hands
+      session.playerHands = [
+        [{ suit: 'S', rank: 'A' }, { suit: 'D', rank: 'A' }], // Player 0 (2 cards)
+        [{ suit: 'S', rank: '9' }],
+        [{ suit: 'S', rank: '8' }],
+        [{ suit: 'S', rank: '7' }]
+      ];
+
+      expect(session.players[0].isAI).toBe(false);
+
+      // Enable takeover/autoplay
+      session.enableAutoPlay();
+
+      // Check takeover state
+      expect(session.players[0].isAI).toBe(true);
+
+      // Verify Player 0 automatically played cards (should have led with smallest card, or A since we have two Aces)
+      // Since it is first play, AI chooses to play. Here the hand has two Aces (A and A), which is a pair of Aces.
+      // Hand: S-A, D-A. It should play the pair of Aces.
+      expect(session.lastPlay).not.toBeNull();
+      expect(session.lastPlay?.playerIndex).toBe(0);
+      expect(session.playerHands[0].length).toBe(0); // All cards played
+    });
+
+    it('should automatically process return when takeover is enabled during waiting return', () => {
+      vi.useFakeTimers();
+      const session = new GameSession();
+      session.levelTeamA = 3;
+      session.lastRoundFinishedPlayers = [0, 1, 2, 3]; // Player 0 is receiver, Player 3 is payer
+
+      session.playerHands = [
+        [{ suit: 'S', rank: 'A' }, { suit: 'D', rank: '5' }], // Player 0 (needs to return card <= 10)
+        [{ suit: 'S', rank: '9' }],
+        [{ suit: 'S', rank: '8' }],
+        [{ suit: 'S', rank: 'K' }] // Player 3
+      ];
+
+      // Step 1: Trigger tribute phase. Payer 3 (AI) pays K to Player 0.
+      session.checkTribute();
+      vi.advanceTimersByTime(1200);
+
+      // Now Player 0 is waiting to return card.
+      expect(session.tributeInfo?.status).toBe('WAITING_RETURN');
+      expect(session.players[0].isAI).toBe(false);
+
+      // Enable takeover/autoplay
+      session.enableAutoPlay();
+
+      // Player 0 should automatically return '5' (the only card <= 10)
+      expect(session.players[0].isAI).toBe(true);
+      expect(session.playerHands[0].some(c => c.rank === '5')).toBe(false);
+      expect(session.playerHands[3].some(c => c.rank === '5')).toBe(true);
+
+      vi.useRealTimers();
+    });
+
+    it('should reset takeover state (isAI = false) when startNextRound is called', () => {
+      const session = new GameSession();
+      session.initGame();
+      session.players[0].isAI = true;
+
+      // Finish the round
+      session.finishedPlayers = [0, 2];
+      const ended = (session as any).checkRoundEnd();
+      expect(ended).toBe(true);
+
+      // Start next round
+      session.startNextRound();
+
+      // Takeover state should be reset
+      expect(session.players[0].isAI).toBe(false);
+    });
+  });
 });
