@@ -1,4 +1,4 @@
-# 战大师 (Guandan Master) 🃏
+# 掼蛋大师 (Guandan Master) 🃏
 
 掼蛋大师是一款运行在浏览器端的精品掼蛋（Guandan）棋牌游戏。项目采用现代感十足的**毛玻璃（Glassmorphism）视觉设计**、高分辨率纯 CSS/SVG 扑克卡牌样式以及细腻的 CSS/JS 动画音效联动，为玩家在电脑端提供真实的沉浸式对局体验。
 
