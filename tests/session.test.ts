@@ -260,6 +260,56 @@ describe('GameSession Integration and Flow Tests', () => {
       expect(session.failCountTeamA).toBe(0);
       expect(session.levelTeamA).toBe(2);
     });
+
+    it('should successfully pass A and win the game (resetting both teams to level 2) when teammate is not last', () => {
+      const session = new GameSession();
+      session.initGame();
+
+      // Setup state: Team A is playing A (level 14)
+      session.levelTeamA = 14;
+      session.currentRank = 'A';
+
+      // Team A wins: Player 0 is 1st, Player 2 (partner) is 2nd (not last/4th)
+      session.finishedPlayers = [0, 2, 1];
+
+      const ended = (session as any).checkRoundEnd();
+      expect(ended).toBe(true);
+
+      session.startNextRound();
+
+      // Verify that Team A successfully passed A and won the game (resetting levels to 2)
+      expect(session.levelTeamA).toBe(2);
+      expect(session.levelTeamB).toBe(2);
+      expect(session.currentRank).toBe('2');
+      expect(session.failCountTeamA).toBe(0);
+    });
+
+    it('should increment A-rank failure count when opponent wins the round while Team A is playing A', () => {
+      const session = new GameSession();
+      session.initGame();
+
+      // Setup state: Team A is playing A (level 14), Team B is playing 5 (level 5)
+      session.levelTeamA = 14;
+      session.levelTeamB = 5;
+      session.currentRank = 'A';
+
+      // Team B wins with double upstream (Player 1 is 1st, Player 3 is 2nd)
+      session.finishedPlayers = [1, 3];
+
+      const ended = (session as any).checkRoundEnd();
+      expect(ended).toBe(true);
+
+      session.startNextRound();
+
+      // Team A should fail to pass A (failure count increments) and remain at level 14
+      expect(session.levelTeamA).toBe(14);
+      expect(session.failCountTeamA).toBe(1);
+
+      // Team B should win and upgrade by 3 levels (from 5 to 8)
+      expect(session.levelTeamB).toBe(8);
+      // Next round's rank becomes '8' because Team B won
+      expect(session.currentRank).toBe('8');
+    });
   });
 
   describe('Autoplay / Takeover (托管功能)', () => {
