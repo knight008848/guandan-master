@@ -6,11 +6,11 @@ import { Card, Combo, HandType, Suit } from './types';
 
 // 花色常量
 export const SUITS: Record<string, Suit> = {
-  HEARTS: 'H',     // 红桃
-  DIAMONDS: 'D',   // 方块
-  CLUBS: 'C',      // 梅花
-  SPADES: 'S',     // 黑桃
-  JOKER: 'J'       // 王牌
+  HEARTS: 'H', // 红桃
+  DIAMONDS: 'D', // 方块
+  CLUBS: 'C', // 梅花
+  SPADES: 'S', // 黑桃
+  JOKER: 'J' // 王牌
 };
 
 // 牌面大小顺序
@@ -26,7 +26,7 @@ export const HAND_TYPES: Record<string, HandType> = {
   STRAIGHT: 'STRAIGHT',
   DOUBLE_STRAIGHT: 'DOUBLE_STRAIGHT',
   STEEL_PLATE: 'STEEL_PLATE',
-  BOMB: 'BOMB',
+  BOMB: 'BOMB'
 };
 
 /**
@@ -38,8 +38,19 @@ export function getCardWeight(rank: string, currentRank: string): number {
   if (rank === currentRank) return 15; // 主牌级别权重为 15
 
   const baseWeights: Record<string, number> = {
-    '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9, '10': 10,
-    'J': 11, 'Q': 12, 'K': 13, 'A': 14
+    '2': 2,
+    '3': 3,
+    '4': 4,
+    '5': 5,
+    '6': 6,
+    '7': 7,
+    '8': 8,
+    '9': 9,
+    '10': 10,
+    J: 11,
+    Q: 12,
+    K: 13,
+    A: 14
   };
   return baseWeights[rank] || 0;
 }
@@ -65,7 +76,7 @@ export function sortCards(cards: Card[], currentRank: string): Card[] {
     const wB = getCardWeight(b.rank, currentRank);
     if (wA !== wB) return wB - wA;
 
-    const suitOrder: Record<Suit, number> = { 'H': 4, 'S': 3, 'C': 2, 'D': 1, 'J': 0 };
+    const suitOrder: Record<Suit, number> = { H: 4, S: 3, C: 2, D: 1, J: 0 };
     return suitOrder[b.suit] - suitOrder[a.suit];
   });
 }
@@ -79,7 +90,7 @@ export function evaluateNormalHand(cards: Card[], currentRank: string): Combo {
 
   // 统计各 rank 的数量
   const counts: Record<string, number> = {};
-  cards.forEach(c => {
+  cards.forEach((c) => {
     counts[c.rank] = (counts[c.rank] || 0) + 1;
   });
   const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]); // 按出现次数降序
@@ -125,7 +136,7 @@ export function evaluateNormalHand(cards: Card[], currentRank: string): Combo {
 
   // 5. 天王炸 (4个王)
   if (len === 4) {
-    const jokerCount = cards.filter(c => c.rank === 'red_joker' || c.rank === 'black_joker').length;
+    const jokerCount = cards.filter((c) => c.rank === 'red_joker' || c.rank === 'black_joker').length;
     if (jokerCount === 4) {
       return {
         type: HAND_TYPES.BOMB,
@@ -178,8 +189,12 @@ export function evaluateNormalHand(cards: Card[], currentRank: string): Combo {
   }
 
   // 9. 双顺/板凳 (3对连续)
-  if (len === 6 && distinctCount === 3 && entries.every(e => e[1] === 2)) {
-    const seqVal = getSequenceMaxWeight(entries.map(e => e[0]), currentRank, 3);
+  if (len === 6 && distinctCount === 3 && entries.every((e) => e[1] === 2)) {
+    const seqVal = getSequenceMaxWeight(
+      entries.map((e) => e[0]),
+      currentRank,
+      3
+    );
     if (seqVal > 0) {
       return {
         type: HAND_TYPES.DOUBLE_STRAIGHT,
@@ -190,8 +205,12 @@ export function evaluateNormalHand(cards: Card[], currentRank: string): Combo {
   }
 
   // 10. 钢板/三顺 (2组连续三张)
-  if (len === 6 && distinctCount === 2 && entries.every(e => e[1] === 3)) {
-    const seqVal = getSequenceMaxWeight(entries.map(e => e[0]), currentRank, 2);
+  if (len === 6 && distinctCount === 2 && entries.every((e) => e[1] === 3)) {
+    const seqVal = getSequenceMaxWeight(
+      entries.map((e) => e[0]),
+      currentRank,
+      2
+    );
     if (seqVal > 0) {
       return {
         type: HAND_TYPES.STEEL_PLATE,
@@ -210,8 +229,8 @@ export function evaluateNormalHand(cards: Card[], currentRank: string): Combo {
 export function analyzeHand(cards: Card[], currentRank: string): Combo[] {
   if (!cards || cards.length === 0) return [{ type: HAND_TYPES.INVALID, power: 0, cardCount: 0 }];
 
-  const wildCards = cards.filter(c => isWildCard(c, currentRank));
-  const normalCards = cards.filter(c => !isWildCard(c, currentRank));
+  const wildCards = cards.filter((c) => isWildCard(c, currentRank));
+  const normalCards = cards.filter((c) => !isWildCard(c, currentRank));
 
   if (wildCards.length === 0) {
     return [evaluateNormalHand(cards, currentRank)];
@@ -254,7 +273,7 @@ export function analyzeHand(cards: Card[], currentRank: string): Combo[] {
     }
   }
 
-  const validResults = possibleResults.filter(r => r.type !== HAND_TYPES.INVALID);
+  const validResults = possibleResults.filter((r) => r.type !== HAND_TYPES.INVALID);
   if (validResults.length === 0) {
     return [{ type: HAND_TYPES.INVALID, power: 0, cardCount: 0 }];
   }
@@ -274,18 +293,18 @@ export function analyzeHand(cards: Card[], currentRank: string): Combo[] {
 // 辅助方法：检查所有牌是否为同花色
 function isSameSuit(cards: Card[]): boolean {
   const suit = cards[0].suit;
-  return cards.every(c => c.suit === suit);
+  return cards.every((c) => c.suit === suit);
 }
 
 /**
  * 判断5张牌是否能构成顺子，并返回最大权重
  */
 function getStraightMaxWeight(cards: Card[], _currentRank: string): number {
-  if (cards.some(c => c.rank === 'red_joker' || c.rank === 'black_joker')) {
+  if (cards.some((c) => c.rank === 'red_joker' || c.rank === 'black_joker')) {
     return 0;
   }
 
-  const faceValues = cards.map(c => {
+  const faceValues = cards.map((c) => {
     if (c.rank === 'A') return 14;
     if (c.rank === 'J') return 11;
     if (c.rank === 'Q') return 12;
@@ -293,13 +312,13 @@ function getStraightMaxWeight(cards: Card[], _currentRank: string): number {
     return parseInt(c.rank, 10);
   });
 
-  let vals = [...faceValues].sort((a, b) => a - b);
+  const vals = [...faceValues].sort((a, b) => a - b);
   if (isConsecutive(vals)) {
     return vals[4];
   }
 
   if (faceValues.includes(14)) {
-    const altVals = faceValues.map(v => v === 14 ? 1 : v).sort((a, b) => a - b);
+    const altVals = faceValues.map((v) => (v === 14 ? 1 : v)).sort((a, b) => a - b);
     if (isConsecutive(altVals)) {
       return altVals[4];
     }
@@ -312,11 +331,11 @@ function getStraightMaxWeight(cards: Card[], _currentRank: string): number {
  * 校验双顺或钢板的连续性
  */
 function getSequenceMaxWeight(ranks: string[], _currentRank: string, _requiredLen: number): number {
-  if (ranks.some(r => r === 'red_joker' || r === 'black_joker')) {
+  if (ranks.some((r) => r === 'red_joker' || r === 'black_joker')) {
     return 0;
   }
 
-  const faceValues = ranks.map(r => {
+  const faceValues = ranks.map((r) => {
     if (r === 'A') return 14;
     if (r === 'J') return 11;
     if (r === 'Q') return 12;
@@ -324,13 +343,13 @@ function getSequenceMaxWeight(ranks: string[], _currentRank: string, _requiredLe
     return parseInt(r, 10);
   });
 
-  let vals = [...faceValues].sort((a, b) => a - b);
+  const vals = [...faceValues].sort((a, b) => a - b);
   if (isConsecutive(vals)) {
     return vals[vals.length - 1];
   }
 
   if (faceValues.includes(14)) {
-    const altVals = faceValues.map(v => v === 14 ? 1 : v).sort((a, b) => a - b);
+    const altVals = faceValues.map((v) => (v === 14 ? 1 : v)).sort((a, b) => a - b);
     if (isConsecutive(altVals)) {
       return altVals[altVals.length - 1];
     }

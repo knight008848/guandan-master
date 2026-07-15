@@ -21,7 +21,7 @@ class EventEmitter {
 
   emit(event: string, ...args: any[]) {
     if (this.events[event]) {
-      this.events[event].forEach(listener => listener(...args));
+      this.events[event].forEach((listener) => listener(...args));
     }
   }
 }
@@ -45,7 +45,6 @@ export class GameSession extends EventEmitter {
 
   public tributeInfo: TributeInfo | null = null;
   public selectedTributeCard: Card | null = null;
-
 
   public players: Player[] = [
     { name: '你 (玩家)', avatar: '👑', isAI: false },
@@ -95,7 +94,7 @@ export class GameSession extends EventEmitter {
       if (info.status === 'WAITING_TRIBUTE') {
         const payer = info.payers[info.index];
         if (payer === 0) {
-          const eligible = this.playerHands[0].filter(c => !isWildCard(c, this.currentRank));
+          const eligible = this.playerHands[0].filter((c) => !isWildCard(c, this.currentRank));
           const sorted = sortCards(eligible, this.currentRank);
           const card = sorted[0];
           if (card) {
@@ -106,7 +105,7 @@ export class GameSession extends EventEmitter {
       } else if (info.status === 'WAITING_RETURN') {
         const receiver = info.receivers[info.index];
         if (receiver === 0) {
-          const eligible = this.playerHands[0].filter(c => {
+          const eligible = this.playerHands[0].filter((c) => {
             return getCardWeight(c.rank, this.currentRank) <= 10 && !isWildCard(c, this.currentRank);
           });
           const sorted = sortCards(eligible.length > 0 ? eligible : this.playerHands[0], this.currentRank);
@@ -122,11 +121,11 @@ export class GameSession extends EventEmitter {
 
   private dealCards() {
     // 1. 创建和洗牌
-    let deck: Card[] = [];
+    const deck: Card[] = [];
     const suits: Suit[] = ['H', 'D', 'C', 'S'];
     for (let d = 0; d < 2; d++) {
-      suits.forEach(suit => {
-        RANKS.forEach(rank => {
+      suits.forEach((suit) => {
+        RANKS.forEach((rank) => {
           deck.push({ suit, rank });
         });
       });
@@ -154,13 +153,13 @@ export class GameSession extends EventEmitter {
     // 触发完成事件，让渲染层开始渲染与动画
     setTimeout(() => {
       this.emit('deal_finished', this.playerHands);
-      
+
       // 第一局无进贡直接开打，通过随机数决定首发玩家
       if (this.lastRoundFinishedPlayers.length === 0) {
         this.phase = 'PLAYING';
         this.currentPlayer = Math.floor(Math.random() * 4);
         this.emit('turn_started', this.currentPlayer, true, null);
-        
+
         if (this.players[this.currentPlayer].isAI) {
           setTimeout(() => this.executeAILogic(), 1400);
         }
@@ -173,25 +172,25 @@ export class GameSession extends EventEmitter {
   // 进贡判定
   public checkTribute() {
     this.phase = 'TRIBUTE';
-    
+
     const first = this.lastRoundFinishedPlayers[0];
     const second = this.lastRoundFinishedPlayers[1];
     const third = this.lastRoundFinishedPlayers[2];
     const last = this.lastRoundFinishedPlayers[3];
 
-    const isDoubleUpstream = (first === 0 && second === 2) || 
-                             (first === 2 && second === 0) ||
-                             (first === 1 && second === 3) ||
-                             (first === 3 && second === 1);
+    const isDoubleUpstream =
+      (first === 0 && second === 2) ||
+      (first === 2 && second === 0) ||
+      (first === 1 && second === 3) ||
+      (first === 3 && second === 1);
 
     if (isDoubleUpstream) {
-
       // 比较进贡牌大小，决定分发对象（大贡给头游，小贡给二游）
-      const eligibleThird = this.playerHands[third].filter(c => !isWildCard(c, this.currentRank));
+      const eligibleThird = this.playerHands[third].filter((c) => !isWildCard(c, this.currentRank));
       const sortedThird = sortCards(eligibleThird, this.currentRank);
       const maxCardThird = sortedThird[0];
 
-      const eligibleLast = this.playerHands[last].filter(c => !isWildCard(c, this.currentRank));
+      const eligibleLast = this.playerHands[last].filter((c) => !isWildCard(c, this.currentRank));
       const sortedLast = sortCards(eligibleLast, this.currentRank);
       const maxCardLast = sortedLast[0];
 
@@ -216,7 +215,6 @@ export class GameSession extends EventEmitter {
       this.setupTribute([last], [first], false);
     }
   }
-
 
   private setupTribute(payers: number[], receivers: number[], isDouble: boolean) {
     this.tributeInfo = {
@@ -263,16 +261,16 @@ export class GameSession extends EventEmitter {
 
     if (payer === 0 && !this.players[0].isAI) {
       // 玩家进贡，派发UI选择事件：只允许玩家选择最大点数的非逢人配卡牌
-      const eligible = this.playerHands[0].filter(c => !isWildCard(c, this.currentRank));
+      const eligible = this.playerHands[0].filter((c) => !isWildCard(c, this.currentRank));
       const sorted = sortCards(eligible, this.currentRank);
       if (sorted.length > 0) {
         const maxWeight = getCardWeight(sorted[0].rank, this.currentRank);
-        const maxWeightCards = sorted.filter(c => getCardWeight(c.rank, this.currentRank) === maxWeight);
+        const maxWeightCards = sorted.filter((c) => getCardWeight(c.rank, this.currentRank) === maxWeight);
         this.emit('tribute_required', '请选择您手牌中最大的一张牌进行进贡：', maxWeightCards);
       }
     } else {
       // AI 进贡
-      const eligible = this.playerHands[payer].filter(c => !isWildCard(c, this.currentRank));
+      const eligible = this.playerHands[payer].filter((c) => !isWildCard(c, this.currentRank));
       const sorted = sortCards(eligible, this.currentRank);
       const card = sorted[0];
       this.executeTribute(payer, receiver, card);
@@ -280,7 +278,7 @@ export class GameSession extends EventEmitter {
   }
 
   private countRedJokers(playerIdx: number): number {
-    return this.playerHands[playerIdx].filter(c => c.rank === 'red_joker').length;
+    return this.playerHands[playerIdx].filter((c) => c.rank === 'red_joker').length;
   }
 
   public submitTributeCard(card: Card) {
@@ -293,7 +291,7 @@ export class GameSession extends EventEmitter {
 
       // 验证玩家进贡卡牌合法性（防止越权选择小牌）
       if (payer === 0) {
-        const eligible = this.playerHands[0].filter(c => !isWildCard(c, this.currentRank));
+        const eligible = this.playerHands[0].filter((c) => !isWildCard(c, this.currentRank));
         const sorted = sortCards(eligible, this.currentRank);
         if (sorted.length > 0) {
           const maxWeight = getCardWeight(sorted[0].rank, this.currentRank);
@@ -311,7 +309,9 @@ export class GameSession extends EventEmitter {
 
       // 验证玩家退贡/还牌卡牌合法性
       if (receiver === 0) {
-        const hasUnder10 = this.playerHands[0].some(c => getCardWeight(c.rank, this.currentRank) <= 10 && !isWildCard(c, this.currentRank));
+        const hasUnder10 = this.playerHands[0].some(
+          (c) => getCardWeight(c.rank, this.currentRank) <= 10 && !isWildCard(c, this.currentRank)
+        );
         if (hasUnder10) {
           if (getCardWeight(card.rank, this.currentRank) > 10 || isWildCard(card, this.currentRank)) {
             this.emit('toast', '退贡牌不符合规则，必须 ≤10 的非逢人配牌！');
@@ -360,7 +360,7 @@ export class GameSession extends EventEmitter {
     const payer = info.payers[info.index];
 
     if (receiver === 0 && !this.players[0].isAI) {
-      const eligible = this.playerHands[0].filter(c => {
+      const eligible = this.playerHands[0].filter((c) => {
         return getCardWeight(c.rank, this.currentRank) <= 10 && !isWildCard(c, this.currentRank);
       });
       let choices: Card[] = [];
@@ -370,12 +370,12 @@ export class GameSession extends EventEmitter {
         // 如果没有 <= 10 的牌，必须还最小的牌（多张同点数可选不同花色）
         const sortedHand = sortCards(this.playerHands[0], this.currentRank);
         const minWeight = getCardWeight(sortedHand[sortedHand.length - 1].rank, this.currentRank);
-        choices = sortedHand.filter(c => getCardWeight(c.rank, this.currentRank) === minWeight);
+        choices = sortedHand.filter((c) => getCardWeight(c.rank, this.currentRank) === minWeight);
       }
       this.emit('return_required', `请退还一张卡牌给 ${this.players[payer].name}（需≤10）：`, choices);
     } else {
       // AI 退贡
-      const eligible = this.playerHands[receiver].filter(c => {
+      const eligible = this.playerHands[receiver].filter((c) => {
         return getCardWeight(c.rank, this.currentRank) <= 10 && !isWildCard(c, this.currentRank);
       });
       const sorted = sortCards(eligible.length > 0 ? eligible : this.playerHands[receiver], this.currentRank);
@@ -401,7 +401,7 @@ export class GameSession extends EventEmitter {
 
   private endTributePhase() {
     this.phase = 'PLAYING';
-    
+
     // 进贡后首发权判定规则：
     // 1. 如果是抗贡（paidCards 为空），直接由上一局的头游（1st place）先出牌；
     // 2. 如果是单贡/内贡，由进贡者（payer）先出牌；
@@ -442,16 +442,22 @@ export class GameSession extends EventEmitter {
     if (this.phase !== 'PLAYING') return false;
 
     // 校验
-    const combo = canPlay(cards, this.lastPlay ? {
-      type: this.lastPlay.type,
-      power: this.lastPlay.power,
-      cardCount: this.lastPlay.cardCount
-    } : null, this.currentRank);
+    const combo = canPlay(
+      cards,
+      this.lastPlay
+        ? {
+            type: this.lastPlay.type,
+            power: this.lastPlay.power,
+            cardCount: this.lastPlay.cardCount
+          }
+        : null,
+      this.currentRank
+    );
 
     if (!combo) return false;
 
     // 扣牌
-    cards.forEach(c => this.removeCard(this.currentPlayer, c));
+    cards.forEach((c) => this.removeCard(this.currentPlayer, c));
 
     // 更新最后出牌记录
     this.lastPlay = {
@@ -492,7 +498,7 @@ export class GameSession extends EventEmitter {
 
   private nextPlayer() {
     this.currentPlayer = (this.currentPlayer + 1) % 4;
-    
+
     // 如果下家已经出完牌了，自动跳过
     while (this.playerHands[this.currentPlayer].length === 0) {
       this.currentPlayer = (this.currentPlayer + 1) % 4;
@@ -557,14 +563,14 @@ export class GameSession extends EventEmitter {
   }
 
   private checkRoundEnd(): boolean {
-    const teamAFinished = this.finishedPlayers.filter(p => p === 0 || p === 2).length;
-    const teamBFinished = this.finishedPlayers.filter(p => p === 1 || p === 3).length;
+    const teamAFinished = this.finishedPlayers.filter((p) => p === 0 || p === 2).length;
+    const teamBFinished = this.finishedPlayers.filter((p) => p === 1 || p === 3).length;
 
     // 当任意一方有两人出完，或者已有三人出完牌时，本局结束
     if (teamAFinished === 2 || teamBFinished === 2 || this.finishedPlayers.length === 3) {
       // 掼蛋规则：头游（第一名）所在的队伍获得本局胜利！
       const winner = this.finishedPlayers[0];
-      const winTeam = (winner === 0 || winner === 2) ? 0 : 1;
+      const winTeam = winner === 0 || winner === 2 ? 0 : 1;
       this.endRound(winTeam);
       return true;
     }
@@ -576,7 +582,7 @@ export class GameSession extends EventEmitter {
 
     // 记录本局排名并补齐未出完牌的玩家，供下局进贡使用
     const fullFinished = [...this.finishedPlayers];
-    [0, 1, 2, 3].forEach(p => {
+    [0, 1, 2, 3].forEach((p) => {
       if (!fullFinished.includes(p)) {
         fullFinished.push(p);
       }
@@ -592,8 +598,11 @@ export class GameSession extends EventEmitter {
     let isDouble = false;
 
     // 双游判定
-    const isDoubleUpstream = (first === 0 && second === 2) || (first === 2 && second === 0) ||
-                             (first === 1 && second === 3) || (first === 3 && second === 1);
+    const isDoubleUpstream =
+      (first === 0 && second === 2) ||
+      (first === 2 && second === 0) ||
+      (first === 1 && second === 3) ||
+      (first === 3 && second === 1);
 
     if (isDoubleUpstream) {
       upgradeLevels = 3;
@@ -607,7 +616,7 @@ export class GameSession extends EventEmitter {
       // 否则为 1st 和 4th 胜出，升 1 级
     }
 
-    let finalRankStr = this.finishedPlayers.map((p, i) => `${i + 1}. ${this.players[p].name}`).join('<br>');
+    const finalRankStr = this.finishedPlayers.map((p, i) => `${i + 1}. ${this.players[p].name}`).join('<br>');
     let settlement: SettlementType = 'US_UP_1';
 
     // 只有在当前局级牌为 A (Level 14) 时，才触发过 A 判定与失败计数
@@ -628,7 +637,10 @@ export class GameSession extends EventEmitter {
               this.emit('toast', '我方连续三次打 A 失败，等级退回 2 级重新开始！');
             } else {
               settlement = 'US_FAIL_A';
-              this.emit('toast', `我方打 A 失败（累计失败 ${this.failCountTeamA} 次，满三次退回 2 级），下局继续打 A！`);
+              this.emit(
+                'toast',
+                `我方打 A 失败（累计失败 ${this.failCountTeamA} 次，满三次退回 2 级），下局继续打 A！`
+              );
             }
           }
         } else {
@@ -640,7 +652,10 @@ export class GameSession extends EventEmitter {
               this.failCountTeamB = 0;
               this.emit('toast', '对手连续三次打 A 失败，等级退回 2 级！');
             } else {
-              this.emit('toast', `对手打 A 失败（累计失败 ${this.failCountTeamB} 次，满三次退回 2 级），其下局继续打 A！`);
+              this.emit(
+                'toast',
+                `对手打 A 失败（累计失败 ${this.failCountTeamB} 次，满三次退回 2 级），其下局继续打 A！`
+              );
             }
           }
           this.levelTeamA += upgradeLevels;
@@ -673,7 +688,10 @@ export class GameSession extends EventEmitter {
               this.emit('toast', '对手连续三次打 A 失败，等级退回 2 级！');
             } else {
               settlement = 'OPPONENT_FAIL_A';
-              this.emit('toast', `对手打 A 失败（累计失败 ${this.failCountTeamB} 次，满三次退回 2 级），其下局继续打 A！`);
+              this.emit(
+                'toast',
+                `对手打 A 失败（累计失败 ${this.failCountTeamB} 次，满三次退回 2 级），其下局继续打 A！`
+              );
             }
           }
         } else {
@@ -685,7 +703,10 @@ export class GameSession extends EventEmitter {
               this.failCountTeamA = 0;
               this.emit('toast', '我方连续三次打 A 失败，等级退回 2 级重新开始！');
             } else {
-              this.emit('toast', `我方打 A 失败（累计失败 ${this.failCountTeamA} 次，满三次退回 2 级），下局继续打 A！`);
+              this.emit(
+                'toast',
+                `我方打 A 失败（累计失败 ${this.failCountTeamA} 次，满三次退回 2 级），下局继续打 A！`
+              );
             }
           }
           this.levelTeamB += upgradeLevels;
@@ -746,7 +767,7 @@ export class GameSession extends EventEmitter {
 
     // 校准当前局的级牌为上一局赢家的级牌（除非发生退级）
     const lastWinner = this.lastRoundFinishedPlayers[0];
-    const winTeamIdx = (lastWinner === 0 || lastWinner === 2) ? 0 : 1;
+    const winTeamIdx = lastWinner === 0 || lastWinner === 2 ? 0 : 1;
     if (winTeamIdx === 0) {
       this.currentRank = getRankChar(this.levelTeamA);
     } else {
@@ -757,9 +778,8 @@ export class GameSession extends EventEmitter {
     this.initGame();
   }
 
-
   private removeCard(playerIdx: number, card: Card) {
-    const idx = this.playerHands[playerIdx].findIndex(c => c.suit === card.suit && c.rank === card.rank);
+    const idx = this.playerHands[playerIdx].findIndex((c) => c.suit === card.suit && c.rank === card.rank);
     if (idx !== -1) {
       this.playerHands[playerIdx].splice(idx, 1);
     }
@@ -769,16 +789,56 @@ export class GameSession extends EventEmitter {
 // 辅助转化
 function getRankChar(levelValue: number): string {
   const map: Record<number, string> = {
-    2: '2', 3: '3', 4: '4', 5: '5', 6: '6', 7: '7', 8: '8', 9: '9', 10: '10',
-    11: 'J', 12: 'Q', 13: 'K', 14: 'A'
+    2: '2',
+    3: '3',
+    4: '4',
+    5: '5',
+    6: '6',
+    7: '7',
+    8: '8',
+    9: '9',
+    10: '10',
+    11: 'J',
+    12: 'Q',
+    13: 'K',
+    14: 'A'
   };
   return map[levelValue] || '2';
 }
 
 // 随机 5 字姓名生成器
 function generateRandomName(): string {
-  const prefixes = ['无敌', '机智', '冷酷', '呆萌', '傲娇', '愤怒', '狂暴', '优雅', '咸鱼', '追风', '霸气', '低调', '糊涂', '开心'];
-  const suffixes = ['皮皮虾', '哈士奇', '程序猿', '背锅侠', '小黄鸭', '二师兄', '大灰狼', '小红帽', '吃瓜人', '追风者', '扫地僧', '打工人', '干饭王'];
+  const prefixes = [
+    '无敌',
+    '机智',
+    '冷酷',
+    '呆萌',
+    '傲娇',
+    '愤怒',
+    '狂暴',
+    '优雅',
+    '咸鱼',
+    '追风',
+    '霸气',
+    '低调',
+    '糊涂',
+    '开心'
+  ];
+  const suffixes = [
+    '皮皮虾',
+    '哈士奇',
+    '程序猿',
+    '背锅侠',
+    '小黄鸭',
+    '二师兄',
+    '大灰狼',
+    '小红帽',
+    '吃瓜人',
+    '追风者',
+    '扫地僧',
+    '打工人',
+    '干饭王'
+  ];
   const p = prefixes[Math.floor(Math.random() * prefixes.length)];
   const s = suffixes[Math.floor(Math.random() * suffixes.length)];
   return p + s;

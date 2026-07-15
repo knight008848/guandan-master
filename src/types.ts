@@ -8,19 +8,11 @@ export interface Card {
   suit: Suit;
   rank: string; // '2'..'A', 'black_joker', 'red_joker'
   isSubstituted?: boolean; // 是否是作为逢人配被替换后的虚拟牌
-  original?: Card;         // 被替换前的原始牌（红心主牌）
+  original?: Card; // 被替换前的原始牌（红心主牌）
 }
 
 export type HandType =
-  | 'INVALID'
-  | 'SINGLE'
-  | 'PAIR'
-  | 'THREE'
-  | 'THREE_TWO'
-  | 'STRAIGHT'
-  | 'DOUBLE_STRAIGHT'
-  | 'STEEL_PLATE'
-  | 'BOMB';
+  'INVALID' | 'SINGLE' | 'PAIR' | 'THREE' | 'THREE_TWO' | 'STRAIGHT' | 'DOUBLE_STRAIGHT' | 'STEEL_PLATE' | 'BOMB';
 
 export interface Combo {
   type: HandType;
@@ -76,4 +68,3 @@ export type SettlementType =
   | 'OPPONENT_UP_1'
   | 'US_FAIL_A'
   | 'OPPONENT_FAIL_A';
-

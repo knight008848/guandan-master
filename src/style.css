@@ -7,12 +7,11 @@
 
 :root {
   --table-bg: radial-gradient(circle at center, #1b5e20 0%, #0d381e 50%, #082112 100%);
-  --panel-bg: rgba(18, 30, 20, 0.7);
-  --glass-border: rgba(255, 255, 255, 0.15);
-  --gold-glow: 0 0 15px rgba(255, 215, 0, 0.6);
+  --panel-bg: rgb(18 30 20 / 70%);
+  --glass-border: rgb(255 255 255 / 15%);
+  --gold-glow: 0 0 15px rgb(255 215 0 / 60%);
   --gold-color: #ffd700;
   --font-family: 'Outfit', 'Noto Sans SC', sans-serif;
-  
   --card-width: 80px;
   --card-height: 120px;
 }
@@ -40,7 +39,7 @@ body {
   justify-content: space-between;
   align-items: center;
   padding: 10px 30px;
-  background: rgba(0, 0, 0, 0.4);
+  background: rgb(0 0 0 / 40%);
   backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--glass-border);
   z-index: 10;
@@ -54,7 +53,7 @@ body {
   background-clip: text;
   -webkit-text-fill-color: transparent;
   letter-spacing: 2px;
-  text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+  text-shadow: 0 2px 4px rgb(0 0 0 / 50%);
 }
 
 .game-info {
@@ -64,7 +63,7 @@ body {
 }
 
 .info-pill {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgb(255 255 255 / 10%);
   padding: 6px 15px;
   border-radius: 20px;
   border: 1px solid var(--glass-border);
@@ -138,7 +137,7 @@ body {
   align-items: center;
   gap: 5px;
   min-width: 90px;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+  box-shadow: 0 4px 10px rgb(0 0 0 / 30%);
 }
 
 .player-seat.bottom .player-profile {
@@ -176,7 +175,7 @@ body {
   font-weight: bold;
   padding: 2px 8px;
   border-radius: 10px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  box-shadow: 0 2px 4px rgb(0 0 0 / 30%);
 }
 
 /* 手牌容器 */
@@ -209,11 +208,14 @@ body {
   background: #fff;
   border-radius: 8px;
   color: #222;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 4px 8px rgb(0 0 0 / 25%);
   cursor: pointer;
-  transition: transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1), box-shadow 0.2s ease, border-color 0.2s ease;
+  transition:
+    transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1),
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
   user-select: none;
-  font-family: 'Outfit', sans-serif;
+  font-family: Outfit, sans-serif;
   overflow: hidden;
 }
 
@@ -221,6 +223,7 @@ body {
 .bottom .cards-container .card {
   margin-right: -42px; /* 高度重叠 */
 }
+
 .bottom .cards-container .card:last-child {
   margin-right: 0;
 }
@@ -274,12 +277,15 @@ body {
 .card.suit-h {
   color: #d32f2f; /* 红桃：经典高对比度红色 */
 }
+
 .card.suit-s {
   color: #212121; /* 黑桃：纯正典雅黑色 */
 }
+
 .card.suit-d {
   color: #1976d2; /* 方块：高贵亮丽蓝色 */
 }
+
 .card.suit-c {
   color: #2e7d32; /* 梅花：生机勃勃绿色 */
 }
@@ -287,75 +293,82 @@ body {
 .card.red-joker {
   color: #d32f2f; /* 大王：亮红 */
   border: 2px solid #ffd700; /* 尊贵金色边框 */
-  background: linear-gradient(135deg, #ffffff 0%, #fff3f3 100%);
-  box-shadow: 0 4px 10px rgba(211, 47, 47, 0.3), 0 2px 4px rgba(0,0,0,0.15);
+  background: linear-gradient(135deg, #fff 0%, #fff3f3 100%);
+  box-shadow:
+    0 4px 10px rgb(211 47 47 / 30%),
+    0 2px 4px rgb(0 0 0 / 15%);
 }
+
 .card.red-joker::before {
   content: '';
   position: absolute;
-  top: 3px;
-  left: 3px;
-  right: 3px;
-  bottom: 3px;
-  border: 1px dashed rgba(211, 47, 47, 0.4);
+  inset: 3px;
+  border: 1px dashed rgb(211 47 47 / 40%);
   border-radius: 5px;
   pointer-events: none;
 }
+
 .card.red-joker .card-value {
   font-size: 13px;
   font-weight: 900;
   writing-mode: vertical-rl;
   letter-spacing: 2px;
 }
+
 .card.red-joker .card-suit-small {
   font-size: 11px;
   margin-top: 2px;
 }
+
 .card.red-joker .card-center-suit {
   font-size: 40px;
   opacity: 0.95;
   color: #d32f2f;
-  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+  filter: drop-shadow(0 2px 4px rgb(0 0 0 / 20%));
 }
 
 .card.black-joker {
   color: #424242; /* 小王：深灰色/黑色 */
   border: 2px solid #9e9e9e; /* 经典银灰色边框 */
-  background: linear-gradient(135deg, #ffffff 0%, #f5f5f5 100%);
-  box-shadow: 0 4px 10px rgba(66, 66, 66, 0.2), 0 2px 4px rgba(0,0,0,0.15);
+  background: linear-gradient(135deg, #fff 0%, #f5f5f5 100%);
+  box-shadow:
+    0 4px 10px rgb(66 66 66 / 20%),
+    0 2px 4px rgb(0 0 0 / 15%);
 }
+
 .card.black-joker::before {
   content: '';
   position: absolute;
-  top: 3px;
-  left: 3px;
-  right: 3px;
-  bottom: 3px;
-  border: 1px dashed rgba(66, 66, 66, 0.3);
+  inset: 3px;
+  border: 1px dashed rgb(66 66 66 / 30%);
   border-radius: 5px;
   pointer-events: none;
 }
+
 .card.black-joker .card-value {
   font-size: 13px;
   font-weight: 900;
   writing-mode: vertical-rl;
   letter-spacing: 2px;
 }
+
 .card.black-joker .card-suit-small {
   font-size: 11px;
   margin-top: 2px;
 }
+
 .card.black-joker .card-center-suit {
   font-size: 40px;
   opacity: 0.95;
   color: #616161;
-  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.15));
+  filter: drop-shadow(0 2px 4px rgb(0 0 0 / 15%));
 }
 
 /* 红黑颜色 */
 .card.red {
   color: #c62828;
 }
+
 .card.black {
   color: #212121;
 }
@@ -364,27 +377,29 @@ body {
 .card.back {
   background: linear-gradient(135deg, #b71c1c 0%, #880e4f 50%, #4a0011 100%);
   border: 3px solid #fff;
-  box-shadow: 0 3px 6px rgba(0,0,0,0.4);
+  box-shadow: 0 3px 6px rgb(0 0 0 / 40%);
 }
 
 .card.back::before {
   content: '';
   position: absolute;
-  top: 6px;
-  left: 6px;
-  right: 6px;
-  bottom: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  inset: 6px;
+  border: 1px solid rgb(255 255 255 / 20%);
   border-radius: 4px;
-  background-image: radial-gradient(rgba(255,255,255,0.1) 20%, transparent 20%),
-                    radial-gradient(rgba(255,255,255,0.1) 20%, transparent 20%);
+  background-image:
+    radial-gradient(rgb(255 255 255 / 10%) 20%, transparent 20%),
+    radial-gradient(rgb(255 255 255 / 10%) 20%, transparent 20%);
   background-size: 8px 8px;
-  background-position: 0 0, 4px 4px;
+  background-position:
+    0 0,
+    4px 4px;
 }
 
 /* 逢人配金色流光 */
 .card.wild {
-  box-shadow: 0 0 10px rgba(255, 215, 0, 0.8), 0 3px 6px rgba(0,0,0,0.3);
+  box-shadow:
+    0 0 10px rgb(255 215 0 / 80%),
+    0 3px 6px rgb(0 0 0 / 30%);
   border: 2px solid var(--gold-color) !important;
 }
 
@@ -399,19 +414,21 @@ body {
   font-weight: 900;
   padding: 1px 4px;
   border-bottom-left-radius: 6px;
-  box-shadow: -1px 1px 2px rgba(0,0,0,0.3);
+  box-shadow: -1px 1px 2px rgb(0 0 0 / 30%);
 }
 
 /* 卡牌悬停与选中状态 */
 .card:hover {
   transform: translateY(-12px);
   z-index: 100 !important;
-  box-shadow: 0 10px 16px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 10px 16px rgb(0 0 0 / 40%);
 }
 
 .card.selected {
   transform: translateY(-24px) !important;
-  box-shadow: var(--gold-glow), 0 12px 20px rgba(0, 0, 0, 0.5);
+  box-shadow:
+    var(--gold-glow),
+    0 12px 20px rgb(0 0 0 / 50%);
   border: 2px solid var(--gold-color);
   z-index: 90 !important;
 }
@@ -434,21 +451,32 @@ body {
   align-items: center;
   min-width: 150px;
   min-height: 100px;
-  background: rgba(255, 255, 255, 0.03);
+  background: rgb(255 255 255 / 3%);
   border-radius: 8px;
   transition: all 0.3s ease;
 }
 
-.play-zone.bottom { bottom: 10px; }
-.play-zone.top { top: 10px; }
-.play-zone.left { left: 40px; }
-.play-zone.right { right: 40px; }
+.play-zone.bottom {
+  bottom: 10px;
+}
+
+.play-zone.top {
+  top: 10px;
+}
+
+.play-zone.left {
+  left: 40px;
+}
+
+.play-zone.right {
+  right: 40px;
+}
 
 /* 提示文本 */
 .play-hint {
   font-size: 16px;
   font-weight: bold;
-  background: rgba(0,0,0,0.6);
+  background: rgb(0 0 0 / 60%);
   padding: 6px 16px;
   border-radius: 12px;
   border: 1px solid var(--glass-border);
@@ -464,12 +492,14 @@ body {
 .play-zone .card {
   margin-right: -48px !important;
   transform: scale(0.85);
-  box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+  box-shadow: 0 2px 5px rgb(0 0 0 / 30%);
   cursor: default;
 }
+
 .play-zone .card:hover {
   transform: scale(0.85);
 }
+
 .play-zone .card:last-child {
   margin-right: 0 !important;
 }
@@ -495,7 +525,7 @@ body {
   border-radius: 25px;
   cursor: pointer;
   transition: all 0.2s ease;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+  box-shadow: 0 4px 10px rgb(0 0 0 / 40%);
   font-family: var(--font-family);
   display: flex;
   align-items: center;
@@ -510,29 +540,32 @@ body {
 .btn-primary {
   background: linear-gradient(135deg, #4caf50 0%, #2e7d32 100%);
   color: #fff;
-  border: 1px solid rgba(255,255,255,0.2);
+  border: 1px solid rgb(255 255 255 / 20%);
 }
+
 .btn-primary:hover {
   background: linear-gradient(135deg, #66bb6a 0%, #388e3c 100%);
-  box-shadow: 0 0 15px rgba(76, 175, 80, 0.4);
+  box-shadow: 0 0 15px rgb(76 175 80 / 40%);
 }
 
 .btn-danger {
   background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
   color: #fff;
 }
+
 .btn-danger:hover {
   background: linear-gradient(135deg, #ef5350 0%, #c62828 100%);
 }
 
 .btn-secondary {
-  background: rgba(0, 0, 0, 0.6);
+  background: rgb(0 0 0 / 60%);
   color: #fff;
   border: 1px solid var(--glass-border);
   backdrop-filter: blur(5px);
 }
+
 .btn-secondary:hover {
-  background: rgba(255, 255, 255, 0.15);
+  background: rgb(255 255 255 / 15%);
 }
 
 .btn:disabled {
@@ -548,7 +581,7 @@ body {
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(5, 15, 8, 0.7);
+  background: rgb(5 15 8 / 70%);
   backdrop-filter: blur(15px);
   z-index: 200;
   display: flex;
@@ -565,13 +598,15 @@ body {
 }
 
 .dialog-box {
-  background: rgba(20, 35, 25, 0.85);
+  background: rgb(20 35 25 / 85%);
   border: 2.5px solid var(--gold-color);
   border-radius: 20px;
   padding: 40px;
   width: 480px;
   text-align: center;
-  box-shadow: 0 15px 30px rgba(0,0,0,0.5), var(--gold-glow);
+  box-shadow:
+    0 15px 30px rgb(0 0 0 / 50%),
+    var(--gold-glow);
   transform: scale(0.9);
   transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
@@ -611,21 +646,28 @@ body {
 }
 
 .toast {
-  background: rgba(0, 0, 0, 0.8);
+  background: rgb(0 0 0 / 80%);
   border-left: 4px solid var(--gold-color);
   padding: 10px 24px;
   border-radius: 6px;
   font-size: 14px;
   font-weight: bold;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-  animation: slideDownFadeIn 0.3s forwards, fadeOut 0.3s 2.7s forwards;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 30%);
+  animation:
+    slideDownFadeIn 0.3s forwards,
+    fadeOut 0.3s 2.7s forwards;
   pointer-events: auto;
 }
 
 /* 动效关键帧 */
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes slideDownFadeIn {
@@ -633,6 +675,7 @@ body {
     opacity: 0;
     transform: translateY(-20px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -662,6 +705,7 @@ body {
     transform: translate(0, 0) scale(1);
     opacity: 1;
   }
+
   100% {
     transform: translate(var(--tx), var(--ty)) scale(0);
     opacity: 0;
@@ -674,9 +718,25 @@ body {
 }
 
 @keyframes shake {
-  0%, 100% { transform: translate(0, 0); }
-  10%, 30%, 50%, 70%, 90% { transform: translate(-3px, -2px); }
-  20%, 40%, 60%, 80% { transform: translate(3px, 2px); }
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+
+  10%,
+  30%,
+  50%,
+  70%,
+  90% {
+    transform: translate(-3px, -2px);
+  }
+
+  20%,
+  40%,
+  60%,
+  80% {
+    transform: translate(3px, 2px);
+  }
 }
 
 /* 发牌飞行动效 */
@@ -693,6 +753,7 @@ body {
     left: 50%;
     transform: translate(-50%, -50%) scale(0.2) rotate(0deg);
   }
+
   100% {
     top: var(--target-top);
     left: var(--target-left);
@@ -702,7 +763,9 @@ body {
 
 /* 替配卡牌高级样式 (带金色/青色流光及标识) */
 .card.substituted {
-  box-shadow: 0 0 10px rgba(100, 255, 218, 0.8), 0 3px 6px rgba(0,0,0,0.3);
+  box-shadow:
+    0 0 10px rgb(100 255 218 / 80%),
+    0 3px 6px rgb(0 0 0 / 30%);
   border: 2px solid #64ffda !important;
 }
 
@@ -717,7 +780,7 @@ body {
   font-weight: 900;
   padding: 1px 4px;
   border-bottom-left-radius: 6px;
-  box-shadow: -1px 1px 2px rgba(0,0,0,0.3);
+  box-shadow: -1px 1px 2px rgb(0 0 0 / 30%);
 }
 
 /* 运行日志面板 */
@@ -727,15 +790,15 @@ body {
   right: -320px; /* 默认隐藏 */
   width: 300px;
   height: calc(100vh - 60px);
-  background: rgba(15, 23, 42, 0.95);
+  background: rgb(15 23 42 / 95%);
   backdrop-filter: blur(15px);
-  border-left: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: -10px 0 30px rgba(0, 0, 0, 0.5);
+  border-left: 1px solid rgb(255 255 255 / 10%);
+  box-shadow: -10px 0 30px rgb(0 0 0 / 50%);
   transition: right 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
   z-index: 100;
   display: flex;
   flex-direction: column;
-  font-family: 'Outfit', sans-serif;
+  font-family: Outfit, sans-serif;
 }
 
 .log-panel.show {
@@ -747,7 +810,7 @@ body {
   justify-content: space-between;
   align-items: center;
   padding: 15px 20px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid rgb(255 255 255 / 10%);
   font-weight: 700;
   color: var(--gold-color);
   font-size: 16px;
@@ -782,7 +845,7 @@ body {
 .log-item {
   padding: 8px 12px;
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.03);
+  background: rgb(255 255 255 / 3%);
   border-left: 3px solid #64ffda;
   line-height: 1.4;
   text-align: left;
@@ -794,13 +857,13 @@ body {
 
 .log-item.round-end {
   border-left-color: #ff5252;
-  background: rgba(255, 82, 82, 0.05);
+  background: rgb(255 82 82 / 5%);
 }
 
 /* 进退贡界面专属透明样式 (不遮挡底部手牌且卡牌美观重叠) */
 .overlay-screen.tribute-mode {
   backdrop-filter: none !important;
-  background: rgba(10, 25, 15, 0.4) !important;
+  background: rgb(10 25 15 / 40%) !important;
   align-items: center !important;
 }
 
@@ -808,8 +871,10 @@ body {
   width: 660px !important;
   max-width: 90% !important;
   border-color: #64ffda !important;
-  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.6), 0 0 20px rgba(100, 255, 218, 0.4) !important;
-  background: rgba(15, 30, 22, 0.95) !important;
+  box-shadow:
+    0 15px 30px rgb(0 0 0 / 60%),
+    0 0 20px rgb(100 255 218 / 40%) !important;
+  background: rgb(15 30 22 / 95%) !important;
 }
 
 #tribute-cards-choice {
@@ -824,8 +889,11 @@ body {
 #tribute-cards-choice .card {
   margin-right: -42px !important; /* 经典重叠负边距 */
   transform: scale(0.85);
-  transition: transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1), margin-top 0.2s, box-shadow 0.2s;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3) !important;
+  transition:
+    transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1),
+    margin-top 0.2s,
+    box-shadow 0.2s;
+  box-shadow: 0 4px 8px rgb(0 0 0 / 30%) !important;
 }
 
 #tribute-cards-choice .card:last-child {
@@ -835,13 +903,15 @@ body {
 #tribute-cards-choice .card:hover {
   transform: scale(0.95) translateY(-10px) !important;
   z-index: 100 !important;
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5) !important;
+  box-shadow: 0 10px 20px rgb(0 0 0 / 50%) !important;
 }
 
 #tribute-cards-choice .card.selected {
   transform: scale(0.95) translateY(-25px) !important;
   border: 2px solid #64ffda !important;
-  box-shadow: 0 0 15px rgba(100, 255, 218, 0.8), 0 10px 20px rgba(0, 0, 0, 0.5) !important;
+  box-shadow:
+    0 0 15px rgb(100 255 218 / 80%),
+    0 10px 20px rgb(0 0 0 / 50%) !important;
   z-index: 95 !important;
 }
 
@@ -849,14 +919,14 @@ body {
 .btn-takeover {
   background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
   color: #fff;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgb(255 255 255 / 20%);
   border-radius: 20px;
   padding: 4px 12px;
   font-size: 11px;
   font-weight: 700;
   cursor: pointer;
   transition: all 0.2s ease;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 2px 5px rgb(0 0 0 / 30%);
   font-family: var(--font-family);
   margin-top: 4px;
   outline: none;
@@ -864,7 +934,7 @@ body {
 
 .btn-takeover:hover {
   background: linear-gradient(135deg, #ffa726 0%, #fb8c00 100%);
-  box-shadow: 0 0 10px rgba(255, 152, 0, 0.4);
+  box-shadow: 0 0 10px rgb(255 152 0 / 40%);
 }
 
 .btn-takeover:active {
@@ -874,7 +944,7 @@ body {
 .btn-takeover:disabled {
   background: #424242 !important;
   color: #888 !important;
-  border-color: rgba(255, 255, 255, 0.05) !important;
+  border-color: rgb(255 255 255 / 5%) !important;
   cursor: not-allowed !important;
   pointer-events: none;
   box-shadow: none !important;
@@ -896,164 +966,215 @@ body {
 
 /* 奖杯：摇摆与呼吸 */
 .settlement-trophy {
-  filter: drop-shadow(0 5px 15px rgba(255, 215, 0, 0.5));
-  animation: trophy-wiggle 3s ease-in-out infinite alternate, trophy-breath 2s ease-in-out infinite alternate;
+  filter: drop-shadow(0 5px 15px rgb(255 215 0 / 50%));
+  animation:
+    trophy-wiggle 3s ease-in-out infinite alternate,
+    trophy-breath 2s ease-in-out infinite alternate;
 }
 
 /* 雪花：自转与漂浮 */
 .settlement-snowflake {
-  filter: drop-shadow(0 5px 15px rgba(0, 229, 255, 0.4));
-  animation: snowflake-spin 12s linear infinite, float-bounce 3s ease-in-out infinite alternate;
+  filter: drop-shadow(0 5px 15px rgb(0 229 255 / 40%));
+  animation:
+    snowflake-spin 12s linear infinite,
+    float-bounce 3s ease-in-out infinite alternate;
 }
 
 /* 礼物与防盾：漂浮 */
-.settlement-gift, .settlement-shield, .settlement-shield-broken, .settlement-warning, .settlement-exclamation, .settlement-star {
+.settlement-gift,
+.settlement-shield,
+.settlement-shield-broken,
+.settlement-warning,
+.settlement-exclamation,
+.settlement-star {
   animation: float-bounce 2.5s ease-in-out infinite alternate;
 }
 
 /* 动画定义 */
 @keyframes trophy-wiggle {
-  0% { transform: rotate(-4deg); }
-  100% { transform: rotate(4deg); }
+  0% {
+    transform: rotate(-4deg);
+  }
+
+  100% {
+    transform: rotate(4deg);
+  }
 }
 
 @keyframes trophy-breath {
-  0% { transform: scale(0.95); }
-  100% { transform: scale(1.05); }
+  0% {
+    transform: scale(0.95);
+  }
+
+  100% {
+    transform: scale(1.05);
+  }
 }
 
 @keyframes snowflake-spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 @keyframes float-bounce {
-  0% { transform: translateY(0); }
-  100% { transform: translateY(-8px); }
+  0% {
+    transform: translateY(0);
+  }
+
+  100% {
+    transform: translateY(-8px);
+  }
 }
 
 /* 1. 本方大结局获胜 (US_GAME_WIN) */
 .dialog-box.settlement-us-game-win {
-  background: linear-gradient(135deg, rgba(20, 35, 25, 0.95) 0%, rgba(35, 30, 10, 0.98) 100%) !important;
+  background: linear-gradient(135deg, rgb(20 35 25 / 95%) 0%, rgb(35 30 10 / 98%) 100%) !important;
   border: 2.5px solid #ffd700 !important;
-  box-shadow: 0 20px 50px rgba(255, 215, 0, 0.4), 0 0 30px rgba(255, 215, 0, 0.2), inset 0 0 20px rgba(255, 215, 0, 0.15) !important;
+  box-shadow:
+    0 20px 50px rgb(255 215 0 / 40%),
+    0 0 30px rgb(255 215 0 / 20%),
+    inset 0 0 20px rgb(255 215 0 / 15%) !important;
 }
+
 .dialog-box.settlement-us-game-win .dialog-title {
   color: #ffd700 !important;
-  text-shadow: 0 0 10px rgba(255, 215, 0, 0.6) !important;
+  text-shadow: 0 0 10px rgb(255 215 0 / 60%) !important;
 }
 
 /* 2. 对方大结局获胜 (OPPONENT_GAME_WIN) */
 .dialog-box.settlement-opponent-game-win {
-  background: linear-gradient(135deg, rgba(35, 10, 25, 0.95) 0%, rgba(15, 5, 10, 0.98) 100%) !important;
+  background: linear-gradient(135deg, rgb(35 10 25 / 95%) 0%, rgb(15 5 10 / 98%) 100%) !important;
   border: 2.5px solid #ff1744 !important;
-  box-shadow: 0 20px 50px rgba(255, 23, 68, 0.35), inset 0 0 20px rgba(255, 23, 68, 0.1) !important;
+  box-shadow:
+    0 20px 50px rgb(255 23 68 / 35%),
+    inset 0 0 20px rgb(255 23 68 / 10%) !important;
 }
+
 .dialog-box.settlement-opponent-game-win .dialog-title {
   color: #ff5252 !important;
-  text-shadow: 0 0 10px rgba(255, 82, 82, 0.5) !important;
+  text-shadow: 0 0 10px rgb(255 82 82 / 50%) !important;
 }
 
 /* 3. 我方打 A 连续 3 次失败退回 2 级 (US_DEGRADED) */
 .dialog-box.settlement-us-degraded {
-  background: linear-gradient(135deg, rgba(10, 25, 35, 0.95) 0%, rgba(5, 15, 25, 0.98) 100%) !important;
+  background: linear-gradient(135deg, rgb(10 25 35 / 95%) 0%, rgb(5 15 25 / 98%) 100%) !important;
   border: 2.5px solid #00e5ff !important;
-  box-shadow: 0 20px 50px rgba(0, 229, 255, 0.3), inset 0 0 20px rgba(0, 229, 255, 0.1) !important;
+  box-shadow:
+    0 20px 50px rgb(0 229 255 / 30%),
+    inset 0 0 20px rgb(0 229 255 / 10%) !important;
 }
+
 .dialog-box.settlement-us-degraded .dialog-title {
   color: #00e5ff !important;
-  text-shadow: 0 0 10px rgba(0, 229, 255, 0.5) !important;
+  text-shadow: 0 0 10px rgb(0 229 255 / 50%) !important;
 }
 
 /* 4. 对手打 A 连续 3 次失败退回 2 级 (OPPONENT_DEGRADED) */
 .dialog-box.settlement-opponent-degraded {
-  background: linear-gradient(135deg, rgba(10, 35, 25, 0.95) 0%, rgba(5, 20, 15, 0.98) 100%) !important;
+  background: linear-gradient(135deg, rgb(10 35 25 / 95%) 0%, rgb(5 20 15 / 98%) 100%) !important;
   border: 2.5px solid #00bfa5 !important;
-  box-shadow: 0 20px 50px rgba(0, 191, 165, 0.3), inset 0 0 20px rgba(0, 191, 165, 0.1) !important;
+  box-shadow:
+    0 20px 50px rgb(0 191 165 / 30%),
+    inset 0 0 20px rgb(0 191 165 / 10%) !important;
 }
+
 .dialog-box.settlement-opponent-degraded .dialog-title {
   color: #64ffda !important;
-  text-shadow: 0 0 10px rgba(100, 255, 218, 0.5) !important;
+  text-shadow: 0 0 10px rgb(100 255 218 / 50%) !important;
 }
 
 /* 5. 本方连升三级 (US_UP_3) */
 .dialog-box.settlement-us-up-3 {
-  background: linear-gradient(135deg, rgba(15, 45, 30, 0.95) 0%, rgba(10, 30, 20, 0.98) 100%) !important;
+  background: linear-gradient(135deg, rgb(15 45 30 / 95%) 0%, rgb(10 30 20 / 98%) 100%) !important;
   border: 2.5px solid #ffd700 !important;
-  box-shadow: 0 15px 35px rgba(255, 215, 0, 0.3), inset 0 0 15px rgba(255, 215, 0, 0.1) !important;
+  box-shadow:
+    0 15px 35px rgb(255 215 0 / 30%),
+    inset 0 0 15px rgb(255 215 0 / 10%) !important;
 }
+
 .dialog-box.settlement-us-up-3 .dialog-title {
   color: #ffd700 !important;
-  text-shadow: 0 0 10px rgba(255, 215, 0, 0.5) !important;
+  text-shadow: 0 0 10px rgb(255 215 0 / 50%) !important;
 }
 
 /* 6. 本方升两级 (US_UP_2) */
 .dialog-box.settlement-us-up-2 {
-  background: linear-gradient(135deg, rgba(15, 40, 25, 0.95) 0%, rgba(10, 25, 15, 0.98) 100%) !important;
+  background: linear-gradient(135deg, rgb(15 40 25 / 95%) 0%, rgb(10 25 15 / 98%) 100%) !important;
   border: 2.5px solid #4db6ac !important;
-  box-shadow: 0 15px 30px rgba(77, 182, 172, 0.3) !important;
+  box-shadow: 0 15px 30px rgb(77 182 172 / 30%) !important;
 }
+
 .dialog-box.settlement-us-up-2 .dialog-title {
   color: #80cbc4 !important;
 }
 
 /* 7. 本方升一级 (US_UP_1) */
 .dialog-box.settlement-us-up-1 {
-  background: linear-gradient(135deg, rgba(20, 35, 25, 0.95) 0%, rgba(10, 20, 15, 0.98) 100%) !important;
+  background: linear-gradient(135deg, rgb(20 35 25 / 95%) 0%, rgb(10 20 15 / 98%) 100%) !important;
   border: 2.5px solid #81c784 !important;
-  box-shadow: 0 15px 25px rgba(129, 199, 132, 0.25) !important;
+  box-shadow: 0 15px 25px rgb(129 199 132 / 25%) !important;
 }
+
 .dialog-box.settlement-us-up-1 .dialog-title {
   color: #a5d6a7 !important;
 }
 
 /* 8. 对方连升三级 (OPPONENT_UP_3) */
 .dialog-box.settlement-opponent-up-3 {
-  background: linear-gradient(135deg, rgba(40, 15, 15, 0.95) 0%, rgba(20, 10, 10, 0.98) 100%) !important;
+  background: linear-gradient(135deg, rgb(40 15 15 / 95%) 0%, rgb(20 10 10 / 98%) 100%) !important;
   border: 2.5px solid #ff1744 !important;
-  box-shadow: 0 15px 35px rgba(255, 23, 68, 0.3) !important;
+  box-shadow: 0 15px 35px rgb(255 23 68 / 30%) !important;
 }
+
 .dialog-box.settlement-opponent-up-3 .dialog-title {
   color: #ff5252 !important;
 }
 
 /* 9. 对方升两级 (OPPONENT_UP_2) */
 .dialog-box.settlement-opponent-up-2 {
-  background: linear-gradient(135deg, rgba(35, 20, 15, 0.95) 0%, rgba(20, 10, 10, 0.98) 100%) !important;
+  background: linear-gradient(135deg, rgb(35 20 15 / 95%) 0%, rgb(20 10 10 / 98%) 100%) !important;
   border: 2.5px solid #ff9100 !important;
-  box-shadow: 0 15px 30px rgba(255, 145, 0, 0.25) !important;
+  box-shadow: 0 15px 30px rgb(255 145 0 / 25%) !important;
 }
+
 .dialog-box.settlement-opponent-up-2 .dialog-title {
   color: #ffb74d !important;
 }
 
 /* 10. 对方升一级 (OPPONENT_UP_1) */
 .dialog-box.settlement-opponent-up-1 {
-  background: linear-gradient(135deg, rgba(30, 25, 25, 0.95) 0%, rgba(20, 15, 15, 0.98) 100%) !important;
+  background: linear-gradient(135deg, rgb(30 25 25 / 95%) 0%, rgb(20 15 15 / 98%) 100%) !important;
   border: 2.5px solid #cfd8dc !important;
-  box-shadow: 0 15px 25px rgba(207, 216, 220, 0.15) !important;
+  box-shadow: 0 15px 25px rgb(207 216 220 / 15%) !important;
 }
+
 .dialog-box.settlement-opponent-up-1 .dialog-title {
   color: #b0bec5 !important;
 }
 
 /* 11. 我方打 A 失败 (US_FAIL_A) */
 .dialog-box.settlement-us-fail-a {
-  background: linear-gradient(135deg, rgba(35, 25, 20, 0.95) 0%, rgba(20, 15, 10, 0.98) 100%) !important;
+  background: linear-gradient(135deg, rgb(35 25 20 / 95%) 0%, rgb(20 15 10 / 98%) 100%) !important;
   border: 2.5px solid #ffab40 !important;
-  box-shadow: 0 15px 30px rgba(255, 171, 64, 0.25) !important;
+  box-shadow: 0 15px 30px rgb(255 171 64 / 25%) !important;
 }
+
 .dialog-box.settlement-us-fail-a .dialog-title {
   color: #ffcc80 !important;
 }
 
 /* 12. 对方打 A 失败 (OPPONENT_FAIL_A) */
 .dialog-box.settlement-opponent-fail-a {
-  background: linear-gradient(135deg, rgba(15, 35, 30, 0.95) 0%, rgba(10, 20, 20, 0.98) 100%) !important;
+  background: linear-gradient(135deg, rgb(15 35 30 / 95%) 0%, rgb(10 20 20 / 98%) 100%) !important;
   border: 2.5px solid #00bfa5 !important;
-  box-shadow: 0 15px 30px rgba(0, 191, 165, 0.25) !important;
+  box-shadow: 0 15px 30px rgb(0 191 165 / 25%) !important;
 }
+
 .dialog-box.settlement-opponent-fail-a .dialog-title {
   color: #a7ffeb !important;
 }
-

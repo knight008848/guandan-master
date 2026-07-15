@@ -83,13 +83,17 @@ export class DOMRenderer {
     });
 
     this.session.on('tribute_card_paid', (payer: number, receiver: number, card: Card, hands: Card[][]) => {
-      this.showToast(`${this.session.players[payer].name} 向 ${this.session.players[receiver].name} 进贡了 【${this.getCardName(card)}】`);
+      this.showToast(
+        `${this.session.players[payer].name} 向 ${this.session.players[receiver].name} 进贡了 【${this.getCardName(card)}】`
+      );
       this.renderAllHands(hands);
       this.updateCardCounts(hands);
     });
 
     this.session.on('return_card_paid', (receiver: number, payer: number, card: Card, hands: Card[][]) => {
-      this.showToast(`${this.session.players[receiver].name} 向 ${this.session.players[payer].name} 退贡了 【${this.getCardName(card)}】`);
+      this.showToast(
+        `${this.session.players[receiver].name} 向 ${this.session.players[payer].name} 退贡了 【${this.getCardName(card)}】`
+      );
       this.renderAllHands(hands);
       this.updateCardCounts(hands);
     });
@@ -148,10 +152,19 @@ export class DOMRenderer {
       this.showToast(`🎉 ${this.session.players[playerIdx].name} 走完卡牌，成为本局 【${rankStr}】！`);
     });
 
-    this.session.on('round_ended', (_winnerTeam: number, _levelClimbed: number, _isDouble: boolean, rankListHtml: string, settlement: SettlementType) => {
-      this.hideControls();
-      this.showSettlementOverlay(rankListHtml, settlement);
-    });
+    this.session.on(
+      'round_ended',
+      (
+        _winnerTeam: number,
+        _levelClimbed: number,
+        _isDouble: boolean,
+        rankListHtml: string,
+        settlement: SettlementType
+      ) => {
+        this.hideControls();
+        this.showSettlementOverlay(rankListHtml, settlement);
+      }
+    );
 
     this.session.on('toast', (msg: string) => {
       this.showToast(msg);
@@ -197,7 +210,7 @@ export class DOMRenderer {
     if (playerContainer) {
       // 1. 保存之前被选中的卡牌信息
       const selectedCards: Card[] = [];
-      playerContainer.querySelectorAll('.card.selected').forEach(el => {
+      playerContainer.querySelectorAll('.card.selected').forEach((el) => {
         const htmlEl = el as HTMLElement;
         selectedCards.push({
           suit: htmlEl.dataset.suit as Suit,
@@ -206,10 +219,10 @@ export class DOMRenderer {
       });
 
       playerContainer.innerHTML = '';
-      hands[0].forEach(card => {
+      hands[0].forEach((card) => {
         const cardEl = this.createCardElement(card);
         // 2. 还原卡牌选中状态
-        const matchIdx = selectedCards.findIndex(sc => sc.suit === card.suit && sc.rank === card.rank);
+        const matchIdx = selectedCards.findIndex((sc) => sc.suit === card.suit && sc.rank === card.rank);
         if (matchIdx !== -1) {
           cardEl.classList.add('selected');
           selectedCards.splice(matchIdx, 1); // 消费该选中状态
@@ -244,7 +257,7 @@ export class DOMRenderer {
 
   private createCardElement(card: Card): HTMLElement {
     const cardEl = document.createElement('div');
-    
+
     // 确定4色牌与大小王对应的 CSS 类
     let suitClass = '';
     if (card.suit === 'H') {
@@ -260,7 +273,7 @@ export class DOMRenderer {
     } else if (card.rank === 'black_joker') {
       suitClass = 'black-joker';
     }
-    
+
     cardEl.className = `card ${suitClass}`;
 
     if (card.rank === this.session.currentRank && card.suit === 'H') {
@@ -271,7 +284,11 @@ export class DOMRenderer {
     }
 
     const suitSymbols: Record<Suit, string> = {
-      'H': '♥', 'D': '♦', 'C': '♣', 'S': '♠', 'J': '🃏'
+      H: '♥',
+      D: '♦',
+      C: '♣',
+      S: '♠',
+      J: '🃏'
     };
 
     let rankLabel = card.rank;
@@ -342,7 +359,7 @@ export class DOMRenderer {
     }
 
     const cardsToPlay: Card[] = [];
-    selectedEls.forEach(el => {
+    selectedEls.forEach((el) => {
       const htmlEl = el as HTMLElement;
       cardsToPlay.push({
         suit: htmlEl.dataset.suit as Suit,
@@ -362,12 +379,16 @@ export class DOMRenderer {
 
   private handleResetSelection() {
     const container = document.getElementById('player-cards-container');
-    container?.querySelectorAll('.card.selected').forEach(el => el.classList.remove('selected'));
+    container?.querySelectorAll('.card.selected').forEach((el) => el.classList.remove('selected'));
   }
 
   private handleSortCards() {
     this.sortMode = this.sortMode === 'RANK' ? 'SUIT' : 'RANK';
-    this.session.playerHands[0] = this.sortPlayerHand(this.session.playerHands[0], this.session.currentRank, this.sortMode);
+    this.session.playerHands[0] = this.sortPlayerHand(
+      this.session.playerHands[0],
+      this.session.currentRank,
+      this.sortMode
+    );
     this.renderAllHands(this.session.playerHands);
     this.showToast(this.sortMode === 'RANK' ? '已按牌值整理' : '已按同花/花色整理');
   }
@@ -391,7 +412,7 @@ export class DOMRenderer {
           return getCardWeight(b.rank, currentRank) - getCardWeight(a.rank, currentRank);
         }
 
-        const suitOrder: Record<Suit, number> = { 'H': 4, 'S': 3, 'C': 2, 'D': 1, 'J': 0 };
+        const suitOrder: Record<Suit, number> = { H: 4, S: 3, C: 2, D: 1, J: 0 };
         if (a.suit !== b.suit) {
           return suitOrder[b.suit] - suitOrder[a.suit];
         }
@@ -419,11 +440,11 @@ export class DOMRenderer {
       const cardEls = container?.querySelectorAll('.card');
       const remainingTips = [...tipPlay];
 
-      cardEls?.forEach(el => {
+      cardEls?.forEach((el) => {
         const htmlEl = el as HTMLElement;
         const suit = htmlEl.dataset.suit;
         const rank = htmlEl.dataset.rank;
-        const matchIdx = remainingTips.findIndex(c => c.suit === suit && c.rank === rank);
+        const matchIdx = remainingTips.findIndex((c) => c.suit === suit && c.rank === rank);
         if (matchIdx !== -1) {
           htmlEl.classList.add('selected');
           remainingTips.splice(matchIdx, 1);
@@ -449,10 +470,10 @@ export class DOMRenderer {
     btn.disabled = true;
     this.selectedTributeCard = null;
 
-    eligible.forEach(card => {
+    eligible.forEach((card) => {
       const cardEl = this.createCardElement(card);
       cardEl.addEventListener('click', () => {
-        cardsChoice.querySelectorAll('.card').forEach(el => el.classList.remove('selected'));
+        cardsChoice.querySelectorAll('.card').forEach((el) => el.classList.remove('selected'));
         cardEl.classList.add('selected');
         this.selectedTributeCard = card;
         btn.disabled = false;
@@ -710,10 +731,12 @@ export class DOMRenderer {
       const positions = ['bottom', 'right', 'top', 'left'];
       zone.className = `play-zone ${positions[playerIdx]}`;
 
-      cards.forEach(c => {
+      cards.forEach((c) => {
         let cardToRender = c;
         if (combo && combo.wildRepresent) {
-          const sub = combo.wildRepresent.find(w => w.original && w.original.suit === c.suit && w.original.rank === c.rank);
+          const sub = combo.wildRepresent.find(
+            (w) => w.original && w.original.suit === c.suit && w.original.rank === c.rank
+          );
           if (sub) {
             cardToRender = sub;
           }
@@ -804,14 +827,25 @@ export class DOMRenderer {
       return `A${failCount + 1}`;
     }
     const map: Record<number, string> = {
-      2: '2', 3: '3', 4: '4', 5: '5', 6: '6', 7: '7', 8: '8', 9: '9', 10: '10',
-      11: 'J', 12: 'Q', 13: 'K', 14: 'A'
+      2: '2',
+      3: '3',
+      4: '4',
+      5: '5',
+      6: '6',
+      7: '7',
+      8: '8',
+      9: '9',
+      10: '10',
+      11: 'J',
+      12: 'Q',
+      13: 'K',
+      14: 'A'
     };
     return map[val] || '2';
   }
 
   private getCardName(card: Card): string {
-    const suitNames: Record<Suit, string> = { 'H': '红桃', 'D': '方块', 'C': '梅花', 'S': '黑桃', 'J': '' };
+    const suitNames: Record<Suit, string> = { H: '红桃', D: '方块', C: '梅花', S: '黑桃', J: '' };
     if (card.rank === 'red_joker') return '大王';
     if (card.rank === 'black_joker') return '小王';
     return suitNames[card.suit] + card.rank;
@@ -819,8 +853,15 @@ export class DOMRenderer {
 
   private getHandTypeName(type: HandType): string {
     const names: Record<HandType, string> = {
-      'SINGLE': '单张', 'PAIR': '对子', 'THREE': '三张', 'THREE_TWO': '三带两',
-      'STRAIGHT': '顺子', 'DOUBLE_STRAIGHT': '双顺', 'STEEL_PLATE': '钢板', 'BOMB': '炸弹', 'INVALID': '未知'
+      SINGLE: '单张',
+      PAIR: '对子',
+      THREE: '三张',
+      THREE_TWO: '三带两',
+      STRAIGHT: '顺子',
+      DOUBLE_STRAIGHT: '双顺',
+      STEEL_PLATE: '钢板',
+      BOMB: '炸弹',
+      INVALID: '未知'
     };
     return names[type] || '未知';
   }
