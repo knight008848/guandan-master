@@ -665,7 +665,7 @@ export class DOMRenderer {
         iconHtml = warningSvg;
         break;
       case 'OPPONENT_UP_1':
-        titleText = '分毫之争・对方晋升一级';
+        titleText = '🍃 分毫之争・对方晋升一级';
         detailDesc = `对手取下了本局第一名（其队友垫底），其级别小幅上升 <span style="font-weight:bold;color:#ff8a80;">+1 级</span>。`;
         iconHtml = grayStarSvg;
         break;
