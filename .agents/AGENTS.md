@@ -9,6 +9,9 @@
     - 避免在默认 CI 流水线中引入依赖真实浏览器（如 Playwright / Cypress 等）的端到端或截图测试，以防由于代理占用、图形环境缺失或 Git 身份认证冲突导致 GitHub 工作流构建失败。
   - **凭据与本地配置隔离 (Credential & Local Config Isolation)**：
     - 严禁将本地测试凭据、网络代理配置、个人 Access Token 或环境特有的本地配置文件提交到 Git 仓库中。
+  - **发布前的静态检查与格式化 (Pre-push Lint & Format Gate)**：
+    - 所有的代码提交或发布前，必须在本地运行并完成 `npm run lint` 和 `npm run format`，确保 ESLint、Stylelint 和 Prettier 检查通过（0 错误，0 警告）。
+    - CI 流水线中已配置了 Lint 和 Test 拦截。严禁提交未经过 Lint 校验的代码以防导致 CI 构建失败。
 
 ## 🔄 开发流程规范 (Development Workflow Guidelines)
 
