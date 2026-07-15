@@ -240,6 +240,7 @@ describe('GameSession Integration and Flow Tests', () => {
       // Failure 1: Team A gets 1st (0) but teammate is 4th (2 is not in finishedPlayers)
       session.finishedPlayers = [0, 1, 3];
       session.lastRoundFinishedPlayers = [0, 1, 3, 2];
+      (session as any).checkRoundEnd();
       session.startNextRound();
       expect(session.failCountTeamA).toBe(1);
       expect(session.levelTeamA).toBe(14); // Still 14
@@ -247,6 +248,7 @@ describe('GameSession Integration and Flow Tests', () => {
       // Failure 2: Team A gets 1st (0) but teammate is 4th again
       session.finishedPlayers = [0, 1, 3];
       session.lastRoundFinishedPlayers = [0, 1, 3, 2];
+      (session as any).checkRoundEnd();
       session.startNextRound();
       expect(session.failCountTeamA).toBe(2);
       expect(session.levelTeamA).toBe(14);
@@ -254,6 +256,7 @@ describe('GameSession Integration and Flow Tests', () => {
       // Failure 3: Team A gets 1st (0) but teammate is 4th again
       session.finishedPlayers = [0, 1, 3];
       session.lastRoundFinishedPlayers = [0, 1, 3, 2];
+      (session as any).checkRoundEnd();
       session.startNextRound();
       
       // Demotes to 2!
@@ -309,6 +312,47 @@ describe('GameSession Integration and Flow Tests', () => {
       expect(session.levelTeamB).toBe(8);
       // Next round's rank becomes '8' because Team B won
       expect(session.currentRank).toBe('8');
+    });
+  });
+
+  describe('SettlementType Calculation Tests', () => {
+    it('should calculate US_UP_3 settlement correctly for double upstream', () => {
+      const session = new GameSession();
+      session.initGame();
+      session.finishedPlayers = [0, 2];
+      (session as any).checkRoundEnd();
+      expect(session.roundSettlementType).toBe('US_UP_3');
+    });
+
+    it('should calculate OPPONENT_UP_2 settlement correctly for opponent single upstream', () => {
+      const session = new GameSession();
+      session.initGame();
+      session.finishedPlayers = [1, 0, 3];
+      (session as any).checkRoundEnd();
+      expect(session.roundSettlementType).toBe('OPPONENT_UP_2');
+    });
+
+    it('should calculate US_GAME_WIN settlement when Team A successfully passes A', () => {
+      const session = new GameSession();
+      session.initGame();
+      session.levelTeamA = 14;
+      session.currentRank = 'A';
+      session.finishedPlayers = [0, 2, 1];
+      (session as any).checkRoundEnd();
+      expect(session.roundSettlementType).toBe('US_GAME_WIN');
+    });
+
+    it('should calculate US_DEGRADED when Team A fails A for the third time', () => {
+      const session = new GameSession();
+      session.initGame();
+      session.levelTeamA = 14;
+      session.currentRank = 'A';
+      session.failCountTeamA = 2; // already failed twice
+      session.finishedPlayers = [0, 1, 3];
+      session.lastRoundFinishedPlayers = [0, 1, 3, 2];
+      (session as any).checkRoundEnd();
+      expect(session.roundSettlementType).toBe('US_DEGRADED');
+      expect(session.levelTeamA).toBe(2);
     });
   });
 

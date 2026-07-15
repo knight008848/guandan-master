@@ -62,3 +62,18 @@ export interface TributeInfo {
   status: 'WAITING_TRIBUTE' | 'WAITING_RETURN';
   index: number;
 }
+
+export type SettlementType =
+  | 'US_GAME_WIN'
+  | 'OPPONENT_GAME_WIN'
+  | 'US_DEGRADED'
+  | 'OPPONENT_DEGRADED'
+  | 'US_UP_3'
+  | 'US_UP_2'
+  | 'US_UP_1'
+  | 'OPPONENT_UP_3'
+  | 'OPPONENT_UP_2'
+  | 'OPPONENT_UP_1'
+  | 'US_FAIL_A'
+  | 'OPPONENT_FAIL_A';
+

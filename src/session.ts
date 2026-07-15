@@ -3,7 +3,7 @@
  * 与 DOM 完全解耦，基于自定义 EventEmitter 发送状态变更事件
  */
 
-import { Card, GamePhase, PlayRecord, Player, PlayerStateView, Suit, TributeInfo } from './types';
+import { Card, GamePhase, PlayRecord, Player, PlayerStateView, Suit, TributeInfo, SettlementType } from './types';
 import { canPlay, getCardWeight, isWildCard, sortCards, RANKS } from './rules';
 import { aiChoosePlay } from './ai';
 
@@ -33,6 +33,7 @@ export class GameSession extends EventEmitter {
   public failCountTeamB: number = 0; // 敌方打 A 连续失败次数
   public currentRank: string = '2'; // 当前局级牌打几级
   public phase: GamePhase = 'DEALING';
+  public roundSettlementType: SettlementType | null = null; // 当前局的结算结果类型
 
   public playerHands: Card[][] = [[], [], [], []];
   public lastPlay: PlayRecord | null = null;
@@ -44,6 +45,7 @@ export class GameSession extends EventEmitter {
 
   public tributeInfo: TributeInfo | null = null;
   public selectedTributeCard: Card | null = null;
+
 
   public players: Player[] = [
     { name: '你 (玩家)', avatar: '👑', isAI: false },
@@ -583,6 +585,8 @@ export class GameSession extends EventEmitter {
 
     const first = this.finishedPlayers[0];
     const second = this.finishedPlayers[1];
+    const partner = (first + 2) % 4;
+    const isTeammateNotLast = this.finishedPlayers.includes(partner);
 
     let upgradeLevels = 1;
     let isDouble = false;
@@ -604,75 +608,137 @@ export class GameSession extends EventEmitter {
     }
 
     let finalRankStr = this.finishedPlayers.map((p, i) => `${i + 1}. ${this.players[p].name}`).join('<br>');
-
-    if (winTeamIdx === 0) {
-      this.levelTeamA += upgradeLevels;
-      if (this.levelTeamA > 14) this.levelTeamA = 14;
-    } else {
-      this.levelTeamB += upgradeLevels;
-      if (this.levelTeamB > 14) this.levelTeamB = 14;
-    }
-
-    this.emit('round_ended', winTeamIdx, upgradeLevels, isDouble, finalRankStr);
-  }
-
-  public startNextRound() {
-    // 检查大结局 (过 A 规则：本方必须拿第一名，且队友不能是最后一名/第四名)
-    const first = this.finishedPlayers[0];
-    const partner = (first + 2) % 4;
-    const isTeammateNotLast = this.finishedPlayers.includes(partner);
+    let settlement: SettlementType = 'US_UP_1';
 
     // 只有在当前局级牌为 A (Level 14) 时，才触发过 A 判定与失败计数
     if (this.currentRank === 'A') {
-      // 1. 我方打 A 判定
-      if (this.levelTeamA === 14) {
-        if ((first === 0 || first === 2) && isTeammateNotLast) {
-          this.emit('toast', '恭喜您和队友成功过 A，获得了整局游戏的最终胜利！重新开始新游戏。');
-          this.levelTeamA = 2;
-          this.levelTeamB = 2;
-          this.currentRank = '2';
-          this.failCountTeamA = 0;
-          this.failCountTeamB = 0;
-          this.finishedPlayers = [];
-          this.lastRoundFinishedPlayers = [];
-          this.initGame();
-          return;
-        } else {
-          this.failCountTeamA++;
-          if (this.failCountTeamA >= 3) {
-            this.emit('toast', '我方连续三次打 A 失败，等级退回 2 级重新开始！');
-            this.levelTeamA = 2;
-            this.failCountTeamA = 0;
+      if (winTeamIdx === 0) {
+        // 我方赢了本局
+        if (this.levelTeamA === 14) {
+          // 我方在打 A
+          if (isTeammateNotLast) {
+            settlement = 'US_GAME_WIN';
+            this.emit('toast', '恭喜您和队友成功过 A，获得了整局游戏的最终胜利！');
           } else {
-            this.emit('toast', `我方打 A 失败（累计失败 ${this.failCountTeamA} 次，满三次退回 2 级），下局继续打 A！`);
+            this.failCountTeamA++;
+            if (this.failCountTeamA >= 3) {
+              settlement = 'US_DEGRADED';
+              this.levelTeamA = 2;
+              this.failCountTeamA = 0;
+              this.emit('toast', '我方连续三次打 A 失败，等级退回 2 级重新开始！');
+            } else {
+              settlement = 'US_FAIL_A';
+              this.emit('toast', `我方打 A 失败（累计失败 ${this.failCountTeamA} 次，满三次退回 2 级），下局继续打 A！`);
+            }
           }
-        }
-      }
+        } else {
+          // 我方赢了但没在打 A（我方还没到 A），此时敌方在打 A 且防守失败，敌方打 A 计数器增加
+          if (this.levelTeamB === 14) {
+            this.failCountTeamB++;
+            if (this.failCountTeamB >= 3) {
+              this.levelTeamB = 2;
+              this.failCountTeamB = 0;
+              this.emit('toast', '对手连续三次打 A 失败，等级退回 2 级！');
+            } else {
+              this.emit('toast', `对手打 A 失败（累计失败 ${this.failCountTeamB} 次，满三次退回 2 级），其下局继续打 A！`);
+            }
+          }
+          this.levelTeamA += upgradeLevels;
+          if (this.levelTeamA > 14) this.levelTeamA = 14;
 
-      // 2. 敌方打 A 判定
-      if (this.levelTeamB === 14) {
-        if ((first === 1 || first === 3) && isTeammateNotLast) {
-          this.emit('toast', '很遗憾，对手成功过 A 赢得了最终胜利。重新开始新游戏。');
-          this.levelTeamA = 2;
-          this.levelTeamB = 2;
-          this.currentRank = '2';
-          this.failCountTeamA = 0;
-          this.failCountTeamB = 0;
-          this.finishedPlayers = [];
-          this.lastRoundFinishedPlayers = [];
-          this.initGame();
-          return;
-        } else {
-          this.failCountTeamB++;
-          if (this.failCountTeamB >= 3) {
-            this.emit('toast', '对手连续三次打 A 失败，等级退回 2 级！');
-            this.levelTeamB = 2;
-            this.failCountTeamB = 0;
+          if (upgradeLevels === 3) settlement = 'US_UP_3';
+          else if (upgradeLevels === 2) settlement = 'US_UP_2';
+          else settlement = 'US_UP_1';
+
+          // 对手退级或者失败的界面覆盖正常升级界面
+          if (this.levelTeamB === 2 && this.failCountTeamB === 0) {
+            settlement = 'OPPONENT_DEGRADED';
+          } else if (this.levelTeamB === 14) {
+            settlement = 'OPPONENT_FAIL_A';
+          }
+        }
+      } else {
+        // 敌方赢了本局
+        if (this.levelTeamB === 14) {
+          // 敌方在打 A
+          if (isTeammateNotLast) {
+            settlement = 'OPPONENT_GAME_WIN';
+            this.emit('toast', '很遗憾，对手成功过 A 赢得了最终胜利。');
           } else {
-            this.emit('toast', `对手打 A 失败（累计失败 ${this.failCountTeamB} 次，满三次退回 2 级），其下局继续打 A！`);
+            this.failCountTeamB++;
+            if (this.failCountTeamB >= 3) {
+              settlement = 'OPPONENT_DEGRADED';
+              this.levelTeamB = 2;
+              this.failCountTeamB = 0;
+              this.emit('toast', '对手连续三次打 A 失败，等级退回 2 级！');
+            } else {
+              settlement = 'OPPONENT_FAIL_A';
+              this.emit('toast', `对手打 A 失败（累计失败 ${this.failCountTeamB} 次，满三次退回 2 级），其下局继续打 A！`);
+            }
+          }
+        } else {
+          // 敌方赢了但没在打 A（我方在打 A），我方打 A 防守失败，我方打 A 计数器增加
+          if (this.levelTeamA === 14) {
+            this.failCountTeamA++;
+            if (this.failCountTeamA >= 3) {
+              this.levelTeamA = 2;
+              this.failCountTeamA = 0;
+              this.emit('toast', '我方连续三次打 A 失败，等级退回 2 级重新开始！');
+            } else {
+              this.emit('toast', `我方打 A 失败（累计失败 ${this.failCountTeamA} 次，满三次退回 2 级），下局继续打 A！`);
+            }
+          }
+          this.levelTeamB += upgradeLevels;
+          if (this.levelTeamB > 14) this.levelTeamB = 14;
+
+          if (upgradeLevels === 3) settlement = 'OPPONENT_UP_3';
+          else if (upgradeLevels === 2) settlement = 'OPPONENT_UP_2';
+          else settlement = 'OPPONENT_UP_1';
+
+          // 我方退级或者失败的界面覆盖正常升级界面
+          if (this.levelTeamA === 2 && this.failCountTeamA === 0) {
+            settlement = 'US_DEGRADED';
+          } else if (this.levelTeamA === 14) {
+            settlement = 'US_FAIL_A';
           }
         }
       }
+    } else {
+      // 正常局，计算正常升级
+      if (winTeamIdx === 0) {
+        this.levelTeamA += upgradeLevels;
+        if (this.levelTeamA > 14) this.levelTeamA = 14;
+
+        if (upgradeLevels === 3) settlement = 'US_UP_3';
+        else if (upgradeLevels === 2) settlement = 'US_UP_2';
+        else settlement = 'US_UP_1';
+      } else {
+        this.levelTeamB += upgradeLevels;
+        if (this.levelTeamB > 14) this.levelTeamB = 14;
+
+        if (upgradeLevels === 3) settlement = 'OPPONENT_UP_3';
+        else if (upgradeLevels === 2) settlement = 'OPPONENT_UP_2';
+        else settlement = 'OPPONENT_UP_1';
+      }
+    }
+
+    this.roundSettlementType = settlement;
+    this.emit('round_ended', winTeamIdx, upgradeLevels, isDouble, finalRankStr, settlement);
+  }
+
+  public startNextRound() {
+    // 检查大结局
+    if (this.roundSettlementType === 'US_GAME_WIN' || this.roundSettlementType === 'OPPONENT_GAME_WIN') {
+      this.levelTeamA = 2;
+      this.levelTeamB = 2;
+      this.currentRank = '2';
+      this.failCountTeamA = 0;
+      this.failCountTeamB = 0;
+      this.finishedPlayers = [];
+      this.lastRoundFinishedPlayers = [];
+      this.roundSettlementType = null;
+      this.initGame();
+      return;
     }
 
     // 重置并开始下一局
@@ -687,8 +753,10 @@ export class GameSession extends EventEmitter {
       this.currentRank = getRankChar(this.levelTeamB);
     }
 
+    this.roundSettlementType = null;
     this.initGame();
   }
+
 
   private removeCard(playerIdx: number, card: Card) {
     const idx = this.playerHands[playerIdx].findIndex(c => c.suit === card.suit && c.rank === card.rank);

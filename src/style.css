@@ -880,3 +880,180 @@ body {
   box-shadow: none !important;
   transform: none !important;
 }
+
+/* ==========================================================================
+   多样化结算卡片样式 (Settlement Screens & Animations)
+   ========================================================================== */
+
+/* 图标容器与基本动画 */
+.settlement-icon-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 25px;
+  perspective: 1000px;
+}
+
+/* 奖杯：摇摆与呼吸 */
+.settlement-trophy {
+  filter: drop-shadow(0 5px 15px rgba(255, 215, 0, 0.5));
+  animation: trophy-wiggle 3s ease-in-out infinite alternate, trophy-breath 2s ease-in-out infinite alternate;
+}
+
+/* 雪花：自转与漂浮 */
+.settlement-snowflake {
+  filter: drop-shadow(0 5px 15px rgba(0, 229, 255, 0.4));
+  animation: snowflake-spin 12s linear infinite, float-bounce 3s ease-in-out infinite alternate;
+}
+
+/* 礼物与防盾：漂浮 */
+.settlement-gift, .settlement-shield, .settlement-shield-broken, .settlement-warning, .settlement-exclamation, .settlement-star {
+  animation: float-bounce 2.5s ease-in-out infinite alternate;
+}
+
+/* 动画定义 */
+@keyframes trophy-wiggle {
+  0% { transform: rotate(-4deg); }
+  100% { transform: rotate(4deg); }
+}
+
+@keyframes trophy-breath {
+  0% { transform: scale(0.95); }
+  100% { transform: scale(1.05); }
+}
+
+@keyframes snowflake-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes float-bounce {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(-8px); }
+}
+
+/* 1. 本方大结局获胜 (US_GAME_WIN) */
+.dialog-box.settlement-us-game-win {
+  background: linear-gradient(135deg, rgba(20, 35, 25, 0.95) 0%, rgba(35, 30, 10, 0.98) 100%) !important;
+  border: 2.5px solid #ffd700 !important;
+  box-shadow: 0 20px 50px rgba(255, 215, 0, 0.4), 0 0 30px rgba(255, 215, 0, 0.2), inset 0 0 20px rgba(255, 215, 0, 0.15) !important;
+}
+.dialog-box.settlement-us-game-win .dialog-title {
+  color: #ffd700 !important;
+  text-shadow: 0 0 10px rgba(255, 215, 0, 0.6) !important;
+}
+
+/* 2. 对方大结局获胜 (OPPONENT_GAME_WIN) */
+.dialog-box.settlement-opponent-game-win {
+  background: linear-gradient(135deg, rgba(35, 10, 25, 0.95) 0%, rgba(15, 5, 10, 0.98) 100%) !important;
+  border: 2.5px solid #ff1744 !important;
+  box-shadow: 0 20px 50px rgba(255, 23, 68, 0.35), inset 0 0 20px rgba(255, 23, 68, 0.1) !important;
+}
+.dialog-box.settlement-opponent-game-win .dialog-title {
+  color: #ff5252 !important;
+  text-shadow: 0 0 10px rgba(255, 82, 82, 0.5) !important;
+}
+
+/* 3. 我方打 A 连续 3 次失败退回 2 级 (US_DEGRADED) */
+.dialog-box.settlement-us-degraded {
+  background: linear-gradient(135deg, rgba(10, 25, 35, 0.95) 0%, rgba(5, 15, 25, 0.98) 100%) !important;
+  border: 2.5px solid #00e5ff !important;
+  box-shadow: 0 20px 50px rgba(0, 229, 255, 0.3), inset 0 0 20px rgba(0, 229, 255, 0.1) !important;
+}
+.dialog-box.settlement-us-degraded .dialog-title {
+  color: #00e5ff !important;
+  text-shadow: 0 0 10px rgba(0, 229, 255, 0.5) !important;
+}
+
+/* 4. 对手打 A 连续 3 次失败退回 2 级 (OPPONENT_DEGRADED) */
+.dialog-box.settlement-opponent-degraded {
+  background: linear-gradient(135deg, rgba(10, 35, 25, 0.95) 0%, rgba(5, 20, 15, 0.98) 100%) !important;
+  border: 2.5px solid #00bfa5 !important;
+  box-shadow: 0 20px 50px rgba(0, 191, 165, 0.3), inset 0 0 20px rgba(0, 191, 165, 0.1) !important;
+}
+.dialog-box.settlement-opponent-degraded .dialog-title {
+  color: #64ffda !important;
+  text-shadow: 0 0 10px rgba(100, 255, 218, 0.5) !important;
+}
+
+/* 5. 本方连升三级 (US_UP_3) */
+.dialog-box.settlement-us-up-3 {
+  background: linear-gradient(135deg, rgba(15, 45, 30, 0.95) 0%, rgba(10, 30, 20, 0.98) 100%) !important;
+  border: 2.5px solid #ffd700 !important;
+  box-shadow: 0 15px 35px rgba(255, 215, 0, 0.3), inset 0 0 15px rgba(255, 215, 0, 0.1) !important;
+}
+.dialog-box.settlement-us-up-3 .dialog-title {
+  color: #ffd700 !important;
+  text-shadow: 0 0 10px rgba(255, 215, 0, 0.5) !important;
+}
+
+/* 6. 本方升两级 (US_UP_2) */
+.dialog-box.settlement-us-up-2 {
+  background: linear-gradient(135deg, rgba(15, 40, 25, 0.95) 0%, rgba(10, 25, 15, 0.98) 100%) !important;
+  border: 2.5px solid #4db6ac !important;
+  box-shadow: 0 15px 30px rgba(77, 182, 172, 0.3) !important;
+}
+.dialog-box.settlement-us-up-2 .dialog-title {
+  color: #80cbc4 !important;
+}
+
+/* 7. 本方升一级 (US_UP_1) */
+.dialog-box.settlement-us-up-1 {
+  background: linear-gradient(135deg, rgba(20, 35, 25, 0.95) 0%, rgba(10, 20, 15, 0.98) 100%) !important;
+  border: 2.5px solid #81c784 !important;
+  box-shadow: 0 15px 25px rgba(129, 199, 132, 0.25) !important;
+}
+.dialog-box.settlement-us-up-1 .dialog-title {
+  color: #a5d6a7 !important;
+}
+
+/* 8. 对方连升三级 (OPPONENT_UP_3) */
+.dialog-box.settlement-opponent-up-3 {
+  background: linear-gradient(135deg, rgba(40, 15, 15, 0.95) 0%, rgba(20, 10, 10, 0.98) 100%) !important;
+  border: 2.5px solid #ff1744 !important;
+  box-shadow: 0 15px 35px rgba(255, 23, 68, 0.3) !important;
+}
+.dialog-box.settlement-opponent-up-3 .dialog-title {
+  color: #ff5252 !important;
+}
+
+/* 9. 对方升两级 (OPPONENT_UP_2) */
+.dialog-box.settlement-opponent-up-2 {
+  background: linear-gradient(135deg, rgba(35, 20, 15, 0.95) 0%, rgba(20, 10, 10, 0.98) 100%) !important;
+  border: 2.5px solid #ff9100 !important;
+  box-shadow: 0 15px 30px rgba(255, 145, 0, 0.25) !important;
+}
+.dialog-box.settlement-opponent-up-2 .dialog-title {
+  color: #ffb74d !important;
+}
+
+/* 10. 对方升一级 (OPPONENT_UP_1) */
+.dialog-box.settlement-opponent-up-1 {
+  background: linear-gradient(135deg, rgba(30, 25, 25, 0.95) 0%, rgba(20, 15, 15, 0.98) 100%) !important;
+  border: 2.5px solid #cfd8dc !important;
+  box-shadow: 0 15px 25px rgba(207, 216, 220, 0.15) !important;
+}
+.dialog-box.settlement-opponent-up-1 .dialog-title {
+  color: #b0bec5 !important;
+}
+
+/* 11. 我方打 A 失败 (US_FAIL_A) */
+.dialog-box.settlement-us-fail-a {
+  background: linear-gradient(135deg, rgba(35, 25, 20, 0.95) 0%, rgba(20, 15, 10, 0.98) 100%) !important;
+  border: 2.5px solid #ffab40 !important;
+  box-shadow: 0 15px 30px rgba(255, 171, 64, 0.25) !important;
+}
+.dialog-box.settlement-us-fail-a .dialog-title {
+  color: #ffcc80 !important;
+}
+
+/* 12. 对方打 A 失败 (OPPONENT_FAIL_A) */
+.dialog-box.settlement-opponent-fail-a {
+  background: linear-gradient(135deg, rgba(15, 35, 30, 0.95) 0%, rgba(10, 20, 20, 0.98) 100%) !important;
+  border: 2.5px solid #00bfa5 !important;
+  box-shadow: 0 15px 30px rgba(0, 191, 165, 0.25) !important;
+}
+.dialog-box.settlement-opponent-fail-a .dialog-title {
+  color: #a7ffeb !important;
+}
+

@@ -3,7 +3,7 @@
  * 纯视图层，通过监听 GameSession 事件进行 UI 绘制及特效呈现
  */
 
-import { Card, Combo, HandType, Suit } from './types';
+import { Card, Combo, HandType, Suit, SettlementType } from './types';
 import { GameSession } from './session';
 import { sortCards, isWildCard, getCardWeight } from './rules';
 import { aiFollowPlay } from './ai';
@@ -148,9 +148,9 @@ export class DOMRenderer {
       this.showToast(`🎉 ${this.session.players[playerIdx].name} 走完卡牌，成为本局 【${rankStr}】！`);
     });
 
-    this.session.on('round_ended', (winnerTeam: number, levelClimbed: number, isDouble: boolean, rankListHtml: string) => {
+    this.session.on('round_ended', (_winnerTeam: number, _levelClimbed: number, _isDouble: boolean, rankListHtml: string, settlement: SettlementType) => {
       this.hideControls();
-      this.showSettlementOverlay(winnerTeam, levelClimbed, isDouble, rankListHtml);
+      this.showSettlementOverlay(rankListHtml, settlement);
     });
 
     this.session.on('toast', (msg: string) => {
@@ -482,30 +482,213 @@ export class DOMRenderer {
   }
 
   // 结算弹窗控制
-  private showSettlementOverlay(winnerTeam: number, levelClimbed: number, isDouble: boolean, rankListHtml: string) {
+  private showSettlementOverlay(rankListHtml: string, settlement: SettlementType) {
     const overlay = document.getElementById('settlement-overlay');
     const title = document.getElementById('settlement-title');
     const content = document.getElementById('settlement-content');
 
     if (!overlay || !title || !content) return;
 
-    let upgradeDesc = `升级数：<span style="color:#ffd700;font-weight:bold;font-size:22px;">+${levelClimbed} 级</span>`;
-    let winDesc = isDouble ? '双游大获全胜！' : '顺利胜出！';
-
-    if (winnerTeam === 0) {
-      title.textContent = '🎉 恭喜，我方赢了！';
-      title.style.color = '#ffd700';
-    } else {
-      title.textContent = '💔 很遗憾，本局输了';
-      title.style.color = '#ff5252';
-      winDesc = '敌方大获全胜！';
+    // 获取内部 dialog-box 并重置其类名
+    const dialogBox = overlay.querySelector('.dialog-box') as HTMLElement;
+    if (dialogBox) {
+      dialogBox.className = 'dialog-box';
+      dialogBox.classList.add('settlement-' + settlement.toLowerCase().replace(/_/g, '-'));
     }
 
+    let titleText = '🎉 恭喜，本局获胜！';
+    let detailDesc = '';
+    let iconHtml = '';
+
+    // 默认的图标定义
+    const trophySvg = `
+      <div class="settlement-icon-container">
+        <svg class="settlement-trophy" viewBox="0 0 100 100" width="80" height="80">
+          <defs>
+            <linearGradient id="gold-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#ffe082" />
+              <stop offset="50%" stop-color="#ffd54f" />
+              <stop offset="100%" stop-color="#ffb300" />
+            </linearGradient>
+            <filter id="trophy-glow" x="-20%" y="-20%" width="140%" height="140%">
+              <feGaussianBlur stdDeviation="3" result="blur" />
+              <feComposite in="SourceGraphic" in2="blur" operator="over" />
+            </filter>
+          </defs>
+          <path d="M 30,25 Q 30,60 50,65 Q 70,60 70,25 Z" fill="url(#gold-grad)" filter="url(#trophy-glow)" />
+          <path d="M 30,30 Q 15,30 20,45 Q 25,55 30,50" fill="none" stroke="url(#gold-grad)" stroke-width="5" stroke-linecap="round" />
+          <path d="M 70,30 Q 85,30 80,45 Q 75,55 70,50" fill="none" stroke="url(#gold-grad)" stroke-width="5" stroke-linecap="round" />
+          <path d="M 45,65 L 45,80 L 55,80 L 55,65 Z" fill="url(#gold-grad)" />
+          <path d="M 35,80 L 65,80 Q 70,80 70,85 L 30,85 Q 30,80 35,80 Z" fill="#b0bec5" />
+          <polygon points="50,35 53,42 60,42 55,47 57,54 50,50 43,54 45,47 40,42 47,42" fill="#fff" />
+        </svg>
+      </div>
+    `;
+
+    const brokenShieldSvg = `
+      <div class="settlement-icon-container">
+        <svg class="settlement-shield-broken" viewBox="0 0 100 100" width="80" height="80">
+          <defs>
+            <linearGradient id="shield-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#b0bec5" />
+              <stop offset="100%" stop-color="#37474f" />
+            </linearGradient>
+          </defs>
+          <path d="M 50,15 L 20,25 L 20,55 Q 20,80 50,85 Q 80,80 80,55 L 80,25 Z" fill="url(#shield-grad)" stroke="#ff5252" stroke-width="3" />
+          <path d="M 50,15 L 48,45 L 53,60 L 50,85" stroke="#ff5252" stroke-width="4" stroke-linecap="round" fill="none" />
+        </svg>
+      </div>
+    `;
+
+    const iceSnowflakeSvg = `
+      <div class="settlement-icon-container">
+        <svg class="settlement-snowflake" viewBox="0 0 100 100" width="80" height="80">
+          <defs>
+            <linearGradient id="ice-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#e0f7fa" />
+              <stop offset="100%" stop-color="#00e5ff" />
+            </linearGradient>
+          </defs>
+          <circle cx="50" cy="50" r="40" fill="none" stroke="url(#ice-grad)" stroke-width="2" stroke-dasharray="4,4" />
+          <path d="M 50,15 L 50,85 M 15,50 L 85,50 M 25,25 L 75,75 M 25,75 L 75,25" stroke="url(#ice-grad)" stroke-width="4" stroke-linecap="round" />
+          <path d="M 40,30 L 50,40 L 60,30 M 40,70 L 50,60 L 60,70 M 30,40 L 40,50 L 30,60 M 70,40 L 60,50 L 70,60" fill="none" stroke="url(#ice-grad)" stroke-width="4" stroke-linecap="round" />
+        </svg>
+      </div>
+    `;
+
+    const packageGiftSvg = `
+      <div class="settlement-icon-container">
+        <svg class="settlement-gift" viewBox="0 0 100 100" width="80" height="80">
+          <defs>
+            <linearGradient id="gift-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#a7ffeb" />
+              <stop offset="100%" stop-color="#00bfa5" />
+            </linearGradient>
+          </defs>
+          <rect x="25" y="40" width="50" height="40" fill="url(#gift-grad)" rx="5" />
+          <rect x="20" y="30" width="60" height="12" fill="#00bfa5" rx="3" />
+          <rect x="46" y="30" width="8" height="50" fill="#ff5252" />
+          <rect x="20" y="46" width="60" height="8" fill="#ff5252" />
+          <path d="M 50,30 C 40,20 40,10 50,20 C 60,10 60,20 50,30 Z" fill="#ff5252" />
+        </svg>
+      </div>
+    `;
+
+    const shieldSvg = `
+      <div class="settlement-icon-container">
+        <svg class="settlement-shield" viewBox="0 0 100 100" width="80" height="80">
+          <defs>
+            <linearGradient id="shield-win-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#b2dfdb" />
+              <stop offset="100%" stop-color="#00695c" />
+            </linearGradient>
+          </defs>
+          <path d="M 50,15 L 25,25 L 25,55 Q 25,80 50,85 Q 75,80 75,55 L 75,25 Z" fill="url(#shield-win-grad)" stroke="#64ffda" stroke-width="3" />
+          <path d="M 40,50 L 48,58 L 62,42" stroke="#64ffda" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+        </svg>
+      </div>
+    `;
+
+    const warningSvg = `
+      <div class="settlement-icon-container">
+        <svg class="settlement-warning" viewBox="0 0 100 100" width="80" height="80">
+          <polygon points="50,15 85,80 15,80" fill="#ff9100" />
+          <rect x="47" y="35" width="6" height="25" fill="#142319" rx="2" />
+          <circle cx="50" cy="70" r="4.5" fill="#142319" />
+        </svg>
+      </div>
+    `;
+
+    const redExclamationSvg = `
+      <div class="settlement-icon-container">
+        <svg class="settlement-exclamation" viewBox="0 0 100 100" width="80" height="80">
+          <polygon points="50,15 85,80 15,80" fill="#ff1744" />
+          <rect x="47" y="35" width="6" height="25" fill="#fff" rx="2" />
+          <circle cx="50" cy="70" r="4.5" fill="#fff" />
+        </svg>
+      </div>
+    `;
+
+    const grayStarSvg = `
+      <div class="settlement-icon-container">
+        <svg class="settlement-star" viewBox="0 0 100 100" width="80" height="80">
+          <polygon points="50,15 63,40 90,40 68,57 76,85 50,68 24,85 32,57 10,40 37,40" fill="#78909c" />
+        </svg>
+      </div>
+    `;
+
+    // 各种类型的文字及图标分流
+    switch (settlement) {
+      case 'US_GAME_WIN':
+        titleText = '👑 传奇大结局・我方全盘获胜！';
+        detailDesc = `<span style="font-weight:bold;color:#ffd700;">恭喜您和队友成功过 A！</span><br>历经风雨，终于打穿了整场游戏的终极防线，取得了全局胜利！`;
+        iconHtml = trophySvg;
+        break;
+      case 'OPPONENT_GAME_WIN':
+        titleText = '🥀 遗憾败北・对手通关获胜';
+        detailDesc = `很遗憾，对手在打 A 局中表现完美，<span style="font-weight:bold;color:#ff5252;">成功过 A 赢得了最终大结局！</span>`;
+        iconHtml = brokenShieldSvg;
+        break;
+      case 'US_DEGRADED':
+        titleText = '❄️ 功败垂成・我方退回 2 级';
+        detailDesc = `<span style="font-weight:bold;color:#00e5ff;">我方连续三次打 A 失败</span>，触发退级规则，您的等级牌被<span style="font-weight:bold;color:#ff5252;">强制重置回了 2 级</span>。`;
+        iconHtml = iceSnowflakeSvg;
+        break;
+      case 'OPPONENT_DEGRADED':
+        titleText = '🎁 绝地转机・对手退回 2 级';
+        detailDesc = `<span style="font-weight:bold;color:#64ffda;">对手连续三次打 A 失败</span>，触发退级惩罚，其等级牌被<span style="font-weight:bold;color:#ff5252;">强制重置回了 2 级</span>！我方吹响反攻号角！`;
+        iconHtml = packageGiftSvg;
+        break;
+      case 'US_UP_3':
+        titleText = '🔥 势如破竹・连升三级！';
+        detailDesc = `我方包揽头游与二游（双下大获全胜），级别向上突进 <span style="font-weight:bold;color:#ffd700;font-size:20px;">+3 级</span>！`;
+        iconHtml = trophySvg;
+        break;
+      case 'US_UP_2':
+        titleText = '⭐ 捷报频传・晋升两级！';
+        detailDesc = `我方获得了第一名和第三名（单下获胜），级别大幅晋升 <span style="font-weight:bold;color:#ffd700;font-size:18px;">+2 级</span>！`;
+        iconHtml = trophySvg;
+        break;
+      case 'US_UP_1':
+        titleText = '🎉 稳扎稳打・晋升一级！';
+        detailDesc = `我方获得了本局第一名（队友垫底），级别稳健上升 <span style="font-weight:bold;color:#ffd700;">+1 级</span>。`;
+        iconHtml = trophySvg;
+        break;
+      case 'OPPONENT_UP_3':
+        titleText = '⚠️ 局势严峻・对方连升三级！';
+        detailDesc = `对手包揽头游与二游（双下大败），对方级别狂升 <span style="font-weight:bold;color:#ff5252;font-size:20px;">+3 级</span>！`;
+        iconHtml = redExclamationSvg;
+        break;
+      case 'OPPONENT_UP_2':
+        titleText = '⚡ 警惕防范・对方晋升两级';
+        detailDesc = `对手获得本局第一名与第三名，其级别上升 <span style="font-weight:bold;color:#ffa726;font-size:18px;">+2 级</span>，请注意防守！`;
+        iconHtml = warningSvg;
+        break;
+      case 'OPPONENT_UP_1':
+        titleText = '分毫之争・对方晋升一级';
+        detailDesc = `对手取下了本局第一名（其队友垫底），其级别小幅上升 <span style="font-weight:bold;color:#ff8a80;">+1 级</span>。`;
+        iconHtml = grayStarSvg;
+        break;
+      case 'US_FAIL_A':
+        titleText = '⚔️ 功亏一篑・打 A 失败';
+        detailDesc = `我方本局未能成功过 A（累计打 A 失败 <span style="font-weight:bold;color:#ff5252;">${this.session.failCountTeamA} 次</span>，满三次退回 2 级），下局继续打 A！`;
+        iconHtml = warningSvg;
+        break;
+      case 'OPPONENT_FAIL_A':
+        titleText = '🛡️ 坚守成功・成功阻击打 A';
+        detailDesc = `我方成功阻击了对手的过 A 企图！（对手累计打 A 失败 <span style="font-weight:bold;color:#64ffda;">${this.session.failCountTeamB} 次</span>，满三次退回 2 级），下局继续阻击！`;
+        iconHtml = shieldSvg;
+        break;
+    }
+
+    title.innerHTML = titleText;
+
     content.innerHTML = `
-      <p style="margin-bottom: 15px;">${winDesc} ${upgradeDesc}</p>
-      <div style="background:rgba(255,255,255,0.05); padding:15px; border-radius:10px; text-align:left; font-size:14px; border:1px solid rgba(255,255,255,0.1);">
-        <strong>本局出牌顺序：</strong><br>
-        ${rankListHtml}
+      ${iconHtml}
+      <p style="margin-bottom: 20px; font-size:16px; color:#e0e0e0;">${detailDesc}</p>
+      <div style="background:rgba(255,255,255,0.03); padding:15px; border-radius:12px; text-align:left; font-size:14px; border:1px solid rgba(255,255,255,0.08);">
+        <strong style="color:var(--gold-color);">🏆 本局排名明细：</strong><br>
+        <div style="margin-top: 8px; line-height: 1.8;">${rankListHtml}</div>
       </div>
     `;
 
