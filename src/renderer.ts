@@ -323,20 +323,11 @@ export class DOMRenderer {
     const wildLabel = document.getElementById('wild-card-label');
     const ourLevel = document.getElementById('our-level');
     const enemyLevel = document.getElementById('enemy-level');
-    const phaseLabel = document.getElementById('game-phase');
 
     if (rankLabel) rankLabel.textContent = this.session.currentRank;
     if (wildLabel) wildLabel.textContent = this.session.currentRank;
     if (ourLevel) ourLevel.textContent = this.getRankName(this.session.levelTeamA, this.session.failCountTeamA);
     if (enemyLevel) enemyLevel.textContent = this.getRankName(this.session.levelTeamB, this.session.failCountTeamB);
-
-    if (phaseLabel) {
-      let phaseStr = '打牌阶段';
-      if (this.session.phase === 'DEALING') phaseStr = '发牌阶段';
-      if (this.session.phase === 'TRIBUTE') phaseStr = '进贡阶段';
-      if (this.session.phase === 'ROUND_END') phaseStr = '结算阶段';
-      phaseLabel.textContent = phaseStr;
-    }
   }
 
   // 出牌指令
