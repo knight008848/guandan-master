@@ -14,6 +14,7 @@
   --font-family: 'Outfit', 'Noto Sans SC', sans-serif;
   --card-width: 80px;
   --card-height: 120px;
+  --header-height: 60px;
 }
 
 * {
@@ -27,6 +28,7 @@ body {
   background: var(--table-bg);
   color: #fff;
   height: 100vh;
+  height: 100dvh;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -43,6 +45,8 @@ body {
   backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--glass-border);
   z-index: 10;
+  height: var(--header-height);
+  box-sizing: border-box;
 }
 
 .logo {
@@ -83,7 +87,9 @@ body {
   flex: 1;
   position: relative;
   width: 100%;
-  height: calc(100vh - 60px);
+  height: calc(100vh - var(--header-height));
+  height: calc(100dvh - var(--header-height));
+  min-height: 0;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -183,7 +189,7 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 140px;
+  min-height: calc(var(--card-height) + 20px);
   width: 100%;
 }
 
@@ -195,8 +201,8 @@ body {
 /* AI手牌是层叠的背牌或只显示剩余牌数 */
 .ai-cards-stack {
   position: relative;
-  width: 100px;
-  height: 120px;
+  width: calc(var(--card-width) + 20px);
+  height: var(--card-height);
   margin-top: 10px;
 }
 
@@ -221,7 +227,7 @@ body {
 
 /* 卡牌层叠负边距（针对用户手牌） */
 .bottom .cards-container .card {
-  margin-right: -42px; /* 高度重叠 */
+  margin-right: calc(var(--card-width) * -0.525); /* 高度重叠 */
 }
 
 .bottom .cards-container .card:last-child {
@@ -490,7 +496,7 @@ body {
 
 /* 出牌卡牌重叠 */
 .play-zone .card {
-  margin-right: -48px !important;
+  margin-right: calc(var(--card-width) * -0.6) !important;
   transform: scale(0.85);
   box-shadow: 0 2px 5px rgb(0 0 0 / 30%);
   cursor: default;
@@ -507,7 +513,7 @@ body {
 /* 操作控制面板 */
 .controls-panel {
   position: absolute;
-  bottom: 160px;
+  bottom: calc(var(--card-height) + 40px);
   display: flex;
   gap: 15px;
   z-index: 100;
@@ -786,10 +792,11 @@ body {
 /* 运行日志面板 */
 .log-panel {
   position: fixed;
-  top: 60px;
+  top: var(--header-height);
   right: -320px; /* 默认隐藏 */
   width: 300px;
-  height: calc(100vh - 60px);
+  height: calc(100vh - var(--header-height));
+  height: calc(100dvh - var(--header-height));
   background: rgb(15 23 42 / 95%);
   backdrop-filter: blur(15px);
   border-left: 1px solid rgb(255 255 255 / 10%);
@@ -887,7 +894,7 @@ body {
 }
 
 #tribute-cards-choice .card {
-  margin-right: -42px !important; /* 经典重叠负边距 */
+  margin-right: calc(var(--card-width) * -0.525) !important; /* 经典重叠负边距 */
   transform: scale(0.85);
   transition:
     transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1),
@@ -1177,4 +1184,57 @@ body {
 
 .dialog-box.settlement-opponent-fail-a .dialog-title {
   color: #a7ffeb !important;
+}
+
+/* 针对小屏幕/iPad等设备的响应式布局 */
+@media (width <= 1024px) or (height <= 800px) {
+  :root {
+    --card-width: 64px;
+    --card-height: 96px;
+    --header-height: 48px;
+  }
+
+  .logo {
+    font-size: 20px;
+  }
+
+  .header-bar {
+    padding: 0 15px;
+  }
+
+  .game-info {
+    gap: 10px;
+    font-size: 12px;
+  }
+
+  .info-pill {
+    padding: 4px 8px;
+  }
+
+  .player-seat.top {
+    top: 10px;
+  }
+
+  .player-seat.bottom {
+    bottom: 10px;
+  }
+
+  .player-seat.left {
+    left: 15px;
+    width: 120px;
+  }
+
+  .player-seat.right {
+    right: 15px;
+    width: 120px;
+  }
+
+  .bottom .cards-container {
+    margin-left: 100px;
+    max-width: 85%;
+  }
+
+  .player-seat.bottom .player-profile {
+    left: 10px;
+  }
 }
