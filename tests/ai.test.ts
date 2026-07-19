@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { Card, PlayerStateView } from '../src/types';
-import { extractCardGroups, aiChoosePlay, aiFollowPlay } from '../src/ai';
+import { aiChoosePlay, aiFollowPlay } from '../src/ai';
+import { extractCardGroups } from '../src/ai/ai_grouper';
 import { HAND_TYPES } from '../src/rules';
 
 describe('Guandan AI Unit Tests', () => {
@@ -13,7 +14,7 @@ describe('Guandan AI Unit Tests', () => {
         { suit: 'H', rank: '8' }, // This forms a bomb of 8s
         { suit: 'S', rank: '10' },
         { suit: 'D', rank: '10' }, // Pair of 10s
-        { suit: 'S', rank: 'A' }, // Single Ace
+        { suit: 'S', rank: 'A' } // Single Ace
       ];
 
       const groups = extractCardGroups(hand, '2');
@@ -38,7 +39,7 @@ describe('Guandan AI Unit Tests', () => {
         { suit: 'J', rank: 'red_joker' },
         { suit: 'J', rank: 'red_joker' },
         { suit: 'J', rank: 'black_joker' },
-        { suit: 'J', rank: 'black_joker' },
+        { suit: 'J', rank: 'black_joker' }
       ];
 
       const groups = extractCardGroups(hand, '2');
@@ -56,7 +57,7 @@ describe('Guandan AI Unit Tests', () => {
         { suit: 'S', rank: '7' },
         { suit: 'S', rank: '8' },
         { suit: 'H', rank: '10' }, // Wildcard
-        { suit: 'S', rank: '3' },  // Single Spade 3
+        { suit: 'S', rank: '3' } // Single Spade 3
       ];
 
       const groups = extractCardGroups(hand, '10');
@@ -64,13 +65,13 @@ describe('Guandan AI Unit Tests', () => {
       // 1. Should find 3 straight flushes as bombs (3-4-5-6-7, 4-5-6-7-8, 5-6-7-8-9)
       expect(groups.bombs.length).toBe(3);
       expect(groups.bombs[0].length).toBe(5);
-      
+
       // 2. Should find 3 normal straights
       expect(groups.straights.length).toBe(3);
       expect(groups.straights[0].length).toBe(5);
 
       // 3. Should find virtual pair (Spade 3 + Hearts 10 as wildcard Spade 3)
-      const pairOfThrees = groups.pairs.find(p => p.some(c => c.rank === '3'));
+      const pairOfThrees = groups.pairs.find((p) => p.some((c) => c.rank === '3'));
       expect(pairOfThrees).toBeDefined();
       expect(pairOfThrees?.length).toBe(2);
     });
@@ -103,7 +104,7 @@ describe('Guandan AI Unit Tests', () => {
       const hand: Card[] = [
         { suit: 'S', rank: '5' }, // weight 5
         { suit: 'D', rank: '8' }, // weight 8
-        { suit: 'C', rank: 'K' }, // weight 13
+        { suit: 'C', rank: 'K' } // weight 13
       ];
 
       const lastPlay = {
