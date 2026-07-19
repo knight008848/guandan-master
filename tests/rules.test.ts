@@ -42,11 +42,11 @@ describe('Guandan Rules Unit Tests', () => {
         { suit: 'H', rank: '2' }, // wild card (current rank 2)
         { suit: 'S', rank: 'K' }, // weight 13
         { suit: 'C', rank: 'A' }, // weight 14
-        { suit: 'J', rank: 'red_joker' }, // weight 17
+        { suit: 'J', rank: 'red_joker' } // weight 17
       ];
-      
+
       const sorted = sortCards(cards, '2');
-      
+
       // Expected order:
       // 1. H2 (wild card)
       // 2. red_joker
@@ -69,21 +69,27 @@ describe('Guandan Rules Unit Tests', () => {
     });
 
     it('should detect PAIR', () => {
-      const result = evaluateNormalHand([
-        { suit: 'S', rank: 'K' },
-        { suit: 'D', rank: 'K' }
-      ], '2');
+      const result = evaluateNormalHand(
+        [
+          { suit: 'S', rank: 'K' },
+          { suit: 'D', rank: 'K' }
+        ],
+        '2'
+      );
       expect(result.type).toBe(HAND_TYPES.PAIR);
       expect(result.power).toBe(13);
     });
 
     it('should detect BOMB', () => {
-      const result = evaluateNormalHand([
-        { suit: 'S', rank: '8' },
-        { suit: 'D', rank: '8' },
-        { suit: 'C', rank: '8' },
-        { suit: 'H', rank: '8' }
-      ], '2');
+      const result = evaluateNormalHand(
+        [
+          { suit: 'S', rank: '8' },
+          { suit: 'D', rank: '8' },
+          { suit: 'C', rank: '8' },
+          { suit: 'H', rank: '8' }
+        ],
+        '2'
+      );
       expect(result.type).toBe(HAND_TYPES.BOMB);
       expect(result.power).toBe(108); // BOMB power has base weight (100 + rankWeight)
     });
@@ -126,7 +132,7 @@ describe('Guandan Rules Unit Tests', () => {
         { suit: 'C', rank: 'J' },
         { suit: 'H', rank: 'J' }
       ];
-      
+
       // 5-card bomb of 4s (weight 4, power 204)
       const bomb5: Card[] = [
         { suit: 'S', rank: '4' },
