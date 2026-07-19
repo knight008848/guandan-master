@@ -16,3 +16,10 @@ node_modules/
 
 # Build outputs
 dist/
+
+# Playwright test artifacts
+test-results/
+playwright-report/
+blob-report/
+.playwright/
+
