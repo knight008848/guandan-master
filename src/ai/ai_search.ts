@@ -105,12 +105,25 @@ export function heuristicFollowPlay(
   let candidates: Card[][] = [];
 
   if (targetType === HAND_TYPES.SINGLE) {
+    // 优先从原生单张中选择跟牌，保护对子与连贯性
     candidates = groups.singles
       .map((c) => [c])
-      .concat(groups.pairs.map((p) => [p[0]]))
       .filter((play) => getCardWeight(play[0].rank, currentRank) > targetPower);
+
+    // 只有在没有可用原生单张，且手牌 <= 4 张（残局冲刺阶段）时，才允许拆对子跟牌
+    if (candidates.length === 0 && hand.length <= 4) {
+      candidates = groups.pairs
+        .map((p) => [p[0]])
+        .filter((play) => getCardWeight(play[0].rank, currentRank) > targetPower);
+    }
   } else if (targetType === HAND_TYPES.PAIR) {
     candidates = groups.pairs.filter((p) => getCardWeight(p[0].rank, currentRank) > targetPower);
+    // 只有在手牌 <= 4 张且无纯对子时，才允许拆三张当作对子打出
+    if (candidates.length === 0 && hand.length <= 4) {
+      candidates = groups.triples
+        .map((t) => [t[0], t[1]])
+        .filter((p) => getCardWeight(p[0].rank, currentRank) > targetPower);
+    }
   } else if (targetType === HAND_TYPES.THREE) {
     candidates = groups.triples.filter((t) => getCardWeight(t[0].rank, currentRank) > targetPower);
   } else if (targetType === HAND_TYPES.THREE_TWO) {

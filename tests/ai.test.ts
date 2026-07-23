@@ -119,5 +119,27 @@ describe('Guandan AI Unit Tests', () => {
       expect(play?.length).toBe(1);
       expect(play?.[0].rank).toBe('8');
     });
+
+    it('should not split pairs when following single card if hand length > 4', () => {
+      const hand: Card[] = [
+        { suit: 'S', rank: '7' },
+        { suit: 'D', rank: '7' }, // Pair of 7s
+        { suit: 'S', rank: '10' },
+        { suit: 'D', rank: '10' }, // Pair of 10s
+        { suit: 'C', rank: 'A' } // Single Ace
+      ];
+
+      const lastPlay = {
+        type: HAND_TYPES.SINGLE,
+        power: 5, // 5 of spades
+        cardCount: 1
+      };
+
+      const play = aiFollowPlay(hand, lastPlay, '2');
+      // Single Ace beats 5, while pairs of 7s and 10s should be preserved
+      expect(play).not.toBeNull();
+      expect(play?.length).toBe(1);
+      expect(play?.[0].rank).toBe('A');
+    });
   });
 });
