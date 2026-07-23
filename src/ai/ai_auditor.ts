@@ -172,8 +172,18 @@ function calculateMetrics(
   });
 
   Object.keys(cardCountsBefore).forEach((rank) => {
-    if (cardCountsBefore[rank] >= 4 && cardCountsAfter[rank] > 0 && cardCountsAfter[rank] < 4) {
+    const countBeforeRank = cardCountsBefore[rank];
+    const countAfterRank = cardCountsAfter[rank];
+
+    if (countBeforeRank >= 4 && countAfterRank > 0 && countAfterRank < 4) {
+      // 拆炸弹：扣 100 分
       comboIntegrity += 100;
+    } else if (countBeforeRank === 3 && countAfterRank > 0 && countAfterRank < 3) {
+      // 拆三张：扣 70 分
+      comboIntegrity += 70;
+    } else if (countBeforeRank === 2 && countAfterRank === 1) {
+      // 拆对子：扣 40 分
+      comboIntegrity += 40;
     }
   });
 

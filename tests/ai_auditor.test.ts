@@ -129,6 +129,50 @@ describe('Guandan AI Auditor & Benchmark Unit Tests', () => {
     expect(report.bestAlgo).toBe('play_normal_8');
   });
 
+  it('should penalize splitting pairs (40 pts) and splitting triples (70 pts)', () => {
+    const hand: Card[] = [
+      { suit: 'S', rank: '7' },
+      { suit: 'D', rank: '7' }, // Pair of 7s
+      { suit: 'S', rank: '9' },
+      { suit: 'D', rank: '9' },
+      { suit: 'C', rank: '9' }, // Triple of 9s
+      { suit: 'H', rank: 'Q' } // Single Q
+    ];
+
+    const view: PlayerStateView = {
+      hand,
+      lastPlay: {
+        type: HAND_TYPES.SINGLE,
+        power: 5,
+        cardCount: 1,
+        playerIndex: 1
+      },
+      currentRank: '2',
+      myIndex: 0,
+      currentWinnerIndex: 1,
+      opponentCardCounts: [10, 10, 10, 10]
+    };
+
+    const proposals: PlayProposal[] = [
+      { algoName: 'split_pair_7', cards: [{ suit: 'S', rank: '7' }] },
+      { algoName: 'split_triple_9', cards: [{ suit: 'S', rank: '9' }] },
+      { algoName: 'play_single_q', cards: [{ suit: 'H', rank: 'Q' }] }
+    ];
+
+    const report = auditAndComparePlays(view, proposals);
+
+    const splitPair = report.proposals.find((p) => p.algoName === 'split_pair_7');
+    const splitTriple = report.proposals.find((p) => p.algoName === 'split_triple_9');
+    const playSingle = report.proposals.find((p) => p.algoName === 'play_single_q');
+
+    expect(splitPair?.metrics.comboIntegrity).toBe(40);
+    expect(splitTriple?.metrics.comboIntegrity).toBe(70);
+    expect(playSingle?.metrics.comboIntegrity).toBe(0);
+
+    // Single Q should score higher than splitting pair 7 or triple 9
+    expect(report.bestAlgo).toBe('play_single_q');
+  });
+
   it('should fallback to smallest card when all proposals are invalid and it must lead', () => {
     const hand: Card[] = [
       { suit: 'C', rank: 'K' },
