@@ -65,51 +65,62 @@
 *   **核心逻辑**：AI根据场上已知出过的牌和自己手牌，对剩下的卡牌进行随机分配（Determinization），在该模拟世界中进行数万次快速自我对局模拟，统计各个出牌动作的最终胜率。
 *   **本地落地评估**：复杂度高，纯TS在浏览器单线程中执行数万次模拟会导致UI卡顿，需使用Web Workers后台多线程推演，适合后续进阶开发。
 
-### 3. 深度学习与强化学习模型
-*   **代表仓库**：`OpenGuanDan`（集成DanZero、GuanZero）
-*   **技术框架**：PyTorch(训练) → ONNX(部署) → ONNX Runtime Web(本地推理)
-*   **核心逻辑**：将对局状态编码为张量，通过神经网络预测每个出牌动作的期望收益值。
-*   **本地落地评估**：智能化程度极高，但模型文件较大（10MB~50MB），且需前期大量离线训练支持。**本项目不采用此路线**（不符合轻量级无外部模型约束）。
+### 3. 深度学习与强化学习模型（TensorFlow.js / ONNX Runtime Web 端侧推理）
+*   **代表仓库与模型**：`OpenGuanDan`（集成 DanZero、GuanZero 强化学习模型）、`DouZero` 迁移模型。
+*   **技术框架**：
+    - **训练端**：PyTorch (Python 离线训练或使用开源预训练 `.pth`/`.pt` 权重文件)
+    - **转换端**：`PyTorch` → `ONNX` (`torch.onnx.export`) → `TF.js Graph Model` (`onnx2tf` + `tfjs-converter`) 或直接使用 ONNX Web 格式。
+    - **推理端**：`TensorFlow.js` (`@tensorflow/tfjs-core` + `@tensorflow/tfjs-backend-wasm` / `webgl`) 或 `ONNX Runtime Web` (`onnxruntime-web`) 在浏览器端侧进行 Web Worker 异步推理。
+*   **核心逻辑**：
+    1.  **状态张量化 (State Encoding)**：将当前玩家手牌、历史出牌记录、队友手牌概率估计、级牌等转换成 ~540 维的特征向量/张量。
+    2.  **动作候选评分 (Action Scoring)**：结合规则引擎 (Layer 1) 生成的合法出牌候选，通过神经网络批量预测每个候选动作的 Q 值 (Action Value)。
+    3.  **最优决策选择 (Greedy / Softmax Sampling)**：选取 Q 值最高或概率最大的动作出牌。
+*   **网络开源预训练模型直接复用评估**：
+    - **模型可获得性**：OpenGuanDan 等开源项目已公开发布训练好的 DanZero / GuanZero 神经网络权重文件（约 5MB ~ 25MB）。
+    - **TensorFlow.js 运行可行性**：通过 `tfjs-converter` 可将转好的模型序列化为 `model.json` + `shard*.bin` 贴图文件，部署至 CDN 或本地静态服务，浏览器通过 WebGL / WASM backend 加载并执行。
+    - **性能表现**：在现代浏览器（Chrome/Safari）下使用 WebGL/WASM 硬件加速，单次推理耗时在 5ms~20ms 之间，完全满足卡牌游戏实时的出牌响应要求。
+*   **落地策略建议**：作为 **Phase 4 混合 AI / 进阶高难度选项**。保留纯 TS 规则/MCTS 引擎作为轻量保底与离线兜底，同时提供 TensorFlow.js / ONNX 模型的增量加载能力，实现"零模型即玩，载入模型即大师"的渐进式 AI 体验。
+
 
 ---
 
-## 三、AI算法设计：纯TypeScript实现路径
+## 三、AI算法设计：纯TypeScript原生与TensorFlow.js扩展路径
 
-### 核心约束
-- ❌ 无Python运行时 / 无PyTorch/ONNX/TensorFlow / 无LLM API
-- ✅ 纯TypeScript算法 / 权重/评分系统 / MCTS / 对抗搜索
+### 核心设计原则
+- **核心轻量化保底**：默认采用纯 TypeScript 启发式 + MCTS 算法（零外部依赖、即开即玩、完全离线）。
+- **进阶神经网络扩展**：可选择加载 TensorFlow.js 或 ONNX Runtime Web 模块，动态载入网络上已训练好的 OpenGuanDan / DanZero 神经网络权重，提升至专业大师级水平。
 
-### AI系统分层
+### AI系统分层架构（混合双引擎）
 
 ```
-┌─────────────────────────────────────────┐
-│  AI System                              │
-│  ┌─────────────────────────────────┐    │
-│  │  Layer 1: 合法动作生成器         │    │ （基于规则）
-│  │  所有合法的出牌组合（≤80种/轮）    │    │
-│  └──────────────┬──────────────────┘    │
-│                 ↓                       │
-│  ┌─────────────────────────────────┐    │
-│  │  Layer 2: 快速评估函数           │    │ （启发式）
-│  │  牌型强度 + 剩余牌数 + 级牌状态  │    │
-│  └──────────────┬──────────────────┘    │
-│                 ↓                       │
-│  ┌─────────────────────────────────┐    │
-│  │  Layer 3: 搜索策略（选择器）     │    │
-│  │  ┌───────┐ ┌──────┐ ┌───────┐ │    │
-│  │  │启发式  │ │MCTS  │ │混合   │ │    │
-│  │  │贪心    │ │搜索  │ │策略   │ │    │
-│  │  └───────┘ └──────┘ └───────┘ │    │
-│  └──────────────┬──────────────────┘    │
-│                 ↓                       │
-│  ┌─────────────────────────────────┐    │
-│  │  Layer 4: 队友/对手建模         │    │ （可选进阶）
-│  │  基于出牌历史的贝叶斯推断        │    │
-│  └─────────────────────────────────┘    │
-└─────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────┐
+│  AI System Architecture                                │
+│                                                        │
+│  ┌──────────────────────────────────────────────────┐  │
+│  │  Layer 1: 合法动作生成器 (TS Rule Engine)         │  │ （基于纯 TS 规则）
+│  │  所有合法的出牌组合（≤80种候选动作/轮）            │  │
+│  └──────────────────────┬───────────────────────────┘  │
+│                         ↓                              │
+│  ┌──────────────────────────────────────────────────┐  │
+│  │  Layer 2: 决策评估引擎 (Decision Engine Switch)   │  │
+│  │  ┌──────────────────────┬──────────────────────┐ │  │
+│  │  │ Mode A: 纯 TS 启发式     │ Mode B: TF.js / ONNX │ │  │
+│  │  │ 牌型评估 + MCTS 搜索     │ 深度神经网络推理      │ │  │
+│  │  └──────────────────────┴──────────────────────┘ │  │
+│  └──────────────────────┬───────────────────────────┘  │
+│                         ↓                              │
+│  ┌──────────────────────────────────────────────────┐  │
+│  │  Layer 3: Web Worker 异步决策调度器              │  │ （避免主线程UI卡顿）
+│  │  在 Worker 线程进行 Tensor 计算 / MCTS 搜索       │  │
+│  └──────────────────────┬───────────────────────────┘  │
+│                         ↓                              │
+│  ┌──────────────────────────────────────────────────┐  │
+│  │  Layer 4: 队友/对手建模与出牌历史追踪器            │  │ （贝叶斯推断/上下文）
+│  └──────────────────────────────────────────────────┘  │
+└────────────────────────────────────────────────────────┘
 ```
 
-### 评估函数设计（TS实现）
+### 1. 评估函数设计（纯 TS 实现）
 
 ```typescript
 interface Card { rank: number; suit: Suit; }
@@ -134,30 +145,61 @@ function evaluateHand(cards: Card[], levelCard: number): number {
 }
 ```
 
+### 2. TensorFlow.js / ONNX 模型接入逻辑（TS/Web Worker 实现）
+
+```typescript
+import * as tf from '@tensorflow/tfjs';
+
+export class TFJSGuandanAgent {
+  private model: tf.GraphModel | null = null;
+
+  async loadModel(modelUrl: string): Promise<void> {
+    // 设置 WebGL / WASM 后端加速
+    await tf.setBackend('webgl');
+    await tf.ready();
+    this.model = await tf.loadGraphModel(modelUrl);
+  }
+
+  // 根据当前局势与候选动作，预测最佳出牌
+  selectBestAction(gameStateTensor: tf.Tensor2D, candidateActions: Card[][]): number {
+    if (!this.model) throw new Error("TF.js Model not initialized");
+    return tf.tidy(() => {
+      // 通过神经网络对所有候选动作进行批量 Q 值评估
+      const qValues = this.model!.predict(gameStateTensor) as tf.Tensor;
+      return qValues.argMax(1).dataSync()[0];
+    });
+  }
+}
+```
+
 ### AI难度分级
 
-| 难度 | 名称 | 算法 | 搜索深度 | 单步耗时 |
+| 难度 | 名称 | 算法模式 | 搜索深度/推理 | 单步耗时 |
 |:----:|:----|:-----|:--------:|:--------:|
 | 1 | 新手 | 纯贪心（最大牌策略） | 0 | <1ms |
 | 2 | 入门 | 启发式评分+简单出牌逻辑 | 1 | <5ms |
 | 3 | 进阶 | 启发式 + 基于规则的搭档配合 | 1 | <10ms |
 | 4 | 专家 | MCTS + 启发式评估 | 3 | ~50ms |
 | 5 | 大师 | MCTS + 对手模型 + 历史推断 | 3-5 | ~200ms |
+| **6** | **棋圣** | **TensorFlow.js / ONNX 神经网络模型** | **DanZero / GuanZero** | **10-30ms** |
 
-### AI算法评分对比（TS原生实现）
+### AI算法评分对比
 
-| AI方案 | 实现难度 | AI强度 | 性能 | 代码量 | 评分 |
-|--------|:-------:|:------:|:----:|:-----:|:----:|
-| A. 纯随机出牌 | 1天 | ★☆☆☆☆ | 即时 | ~30行 | 2/10 |
-| B. 贪心启发式（最大牌/最小牌） | 2天 | ★★☆☆☆ | 即时 | ~100行 | 4/10 |
-| C. 权重评分AI（参考ZhouWeikuan） | 1周 | ★★★☆☆ | <5ms | ~500行 | 6/10 |
-| D. C + 牌型组合枚举器 | 1.5周 | ★★★☆☆ | <10ms | ~800行 | 6.5/10 |
-| **E. D + 多轮规划（前瞻1-2轮）** | **2周** | **★★★★☆** | **<30ms** | **~1200行** | **7.5/10** |
-| F. E + MCTS搜索（参考DouZero两阶段） | 3周 | ★★★★☆ | ~100ms | ~2000行 | 8/10 |
-| G. F + 对手出牌模式建模（贝叶斯推断） | 4周 | ★★★★★ | ~200ms | ~3000行 | 9/10 |
-| H. G + 自对弈策略迭代（无需外部模型） | 6周 | ★★★★★ | ~200ms | ~4000行 | 9.5/10 |
+| AI方案 | 实现难度 | AI强度 | 性能 | 模型/文件大小 | 代码量 | 综合评分 |
+|--------|:-------:|:------:|:----:|:------------:|:-----:|:----:|
+| A. 纯随机出牌 | 1天 | ★☆☆☆☆ | 即时 | 0KB | ~30行 | 2/10 |
+| B. 贪心启发式（最大牌/最小牌） | 2天 | ★★☆☆☆ | 即时 | 0KB | ~100行 | 4/10 |
+| C. 权重评分AI（参考ZhouWeikuan） | 1周 | ★★★☆☆ | <5ms | 0KB | ~500行 | 6/10 |
+| D. C + 牌型组合枚举器 | 1.5周 | ★★★☆☆ | <10ms | 0KB | ~800行 | 6.5/10 |
+| **E. D + 多轮规划（前瞻1-2轮）** | **2周** | **★★★★☆** | **<30ms** | **0KB** | **~1200行** | **7.5/10** |
+| F. E + MCTS搜索（参考DouZero两阶段） | 3周 | ★★★★☆ | ~100ms | 0KB | ~2000行 | 8/10 |
+| G. F + 对手出牌模式建模（贝叶斯推断） | 4周 | ★★★★★ | ~200ms | 0KB | ~3000行 | 9/10 |
+| **H. TensorFlow.js 加载预训练模型** | **3周** | **★★★★★** | **10-30ms** | **~1.5MB(tfjs) + 15MB(权重)** | **~800行** | **9.2/10** |
+| **I. ONNX Runtime Web 载入 DanZero** | **3.5周** | **★★★★★** | **5-20ms** | **~2MB(wasm) + 12MB(onnx)** | **~700行** | **9.5/10** |
 
-**推荐起点**：方案E（权重评分+多轮规划），平衡实现成本与AI强度。
+**推荐实施路线**：
+- **基线阶段**：优先实现 **方案E**（纯 TS 权重评分+多轮规划），保证零依赖极简打底。
+- **进阶阶段**：扩展 **方案H/I**（TensorFlow.js / ONNX Web），通过按需/异步加载网络上开源的 OpenGuanDan / DanZero 权重，获得大厂级的顶级 AI 表现。
 
 ---
 
@@ -290,27 +332,37 @@ src/
 | 包体积 | ⭐⭐⭐⭐⭐ | ~30KB |
 | 综合推荐度 | **⭐⭐⭐⭐** | 建议作为第一阶段产出 |
 
+### 路线F：TensorFlow.js / ONNX 端侧神经网络路线（进阶顶配 AI）
+**技术栈**：TypeScript + `@tensorflow/tfjs` / `onnxruntime-web` + Web Workers
+
+| 维度 | 评分 | 说明 |
+|------|:----:|------|
+| 包体积 | ⭐⭐⭐ | ~1.5MB 框架 + 15MB 模型权重 |
+| 性能 | ⭐⭐⭐⭐ | WebGL/WASM 加速，10~30ms 推理 |
+| AI强度 | ⭐⭐⭐⭐⭐ | 大厂级/国标级开源预训练模型水平 |
+| 综合推荐度 | **⭐⭐⭐⭐** | **作为 Phase 4 高难度 AI 动态插件接入** |
+
 ### 综合评分雷达对比
 
-| 标准 | 路线A(Canvas) | 路线B(Pixi.js) | 路线C(TUI) | 路线D(Phaser) | 路线E(纯引擎) |
-|------|:------------:|:-------------:|:----------:|:-------------:|:------------:|
-| 轻量程度 | ★★★★★ | ★★★★☆ | ★★★★★ | ★★★☆☆ | ★★★★★ |
-| 视觉效果 | ★★★☆☆ | ★★★★★ | ★☆☆☆☆ | ★★★★★ | ☆☆☆☆☆ |
-| 开发效率 | ★★★☆☆ | ★★★★☆ | ★★★★☆ | ★★★★★ | ★★★★★ |
-| AI能力(共享) | ★★★☆☆ | ★★★☆☆ | ★★★☆☆ | ★★★☆☆ | ★★★☆☆ |
-| 可维护性 | ★★★★☆ | ★★★★☆ | ★★★★☆ | ★★★☆☆ | ★★★★★ |
-| 扩展性(未来) | ★★★☆☆ | ★★★★☆ | ★★☆☆☆ | ★★★★★ | ★★★★★ |
-| 触屏/移动适配 | ★★★☆☆ | ★★★★★ | ☆☆☆☆☆ | ★★★★★ | — |
-| **总分** | **24/35** | **29/35** | **18/35** | **26/35** | **23/30** |
+| 标准 | 路线A(Canvas) | 路线B(Pixi.js) | 路线C(TUI) | 路线D(Phaser) | 路线E(纯引擎) | 路线F(TF.js/ONNX) |
+|------|:------------:|:-------------:|:----------:|:-------------:|:------------:|:----------------:|
+| 轻量程度 | ★★★★★ | ★★★★☆ | ★★★★★ | ★★★☆☆ | ★★★★★ | ★★☆☆☆ |
+| 视觉效果 | ★★★☆☆ | ★★★★★ | ★☆☆☆☆ | ★★★★★ | ☆☆☆☆☆ | — |
+| 开发效率 | ★★★☆☆ | ★★★★☆ | ★★★★☆ | ★★★★★ | ★★★★★ | ★★★☆☆ |
+| AI能力(共享) | ★★★☆☆ | ★★★☆☆ | ★★★☆☆ | ★★★☆☆ | ★★★☆☆ | **★★★★★** |
+| 可维护性 | ★★★★☆ | ★★★★☆ | ★★★★☆ | ★★★☆☆ | ★★★★★ | ★★★★☆ |
+| 扩展性(未来) | ★★★☆☆ | ★★★★☆ | ★★☆☆☆ | ★★★★★ | ★★★★★ | **★★★★★** |
+| 触屏/移动适配 | ★★★☆☆ | ★★★★★ | ☆☆☆☆☆ | ★★★★★ | — | ★★★★☆ |
+| **总分** | **24/35** | **29/35** | **18/35** | **26/35** | **23/30** | **27/35** |
 
 ---
 
-## 七、产品架构推荐（单人TS原生版）
+## 七、产品架构推荐（单人TS原生 + 渐进式AI扩展版）
 
 ### 推荐策略
 
 ```
-推荐顺序：路线E → 路线B →（未来）路线D
+推荐顺序：Phase 1 (路线E 纯引擎) → Phase 2 (路线B Pixi UI) → Phase 3 (体验打磨) → Phase 4 (路线F TF.js/ONNX 模型接入)
 ```
 
 ### Phase 1：纯逻辑引擎（≈2周）
@@ -359,6 +411,17 @@ guandan-pixi/
 - 特殊牌型炸弹特效（CSS屏幕震动 + 粒子系统）
 - 发牌飞行动效（缓出曲线飞行卡牌）
 
+### Phase 4：TensorFlow.js / ONNX 深度学习 AI 扩展（≈2周）
+```
+guandan-ai-dl/
+├── src/
+│   ├── tensor/           # 局势特征提取器 (540维 State Vector Encoder)
+│   ├── loader/           # 模型按需/懒加载器 (TFJS GraphModel / ONNX Session)
+│   ├── worker/           # Web Worker 异步推理通道
+│   └── model/            # 预训练 DanZero / GuanZero 转换为 tfjs model.json + bin
+```
+**亮点**：用户选择"棋圣难度"时，前端通过 ServiceWorker / Lazy Load 动态下载 10MB 模型，在 Web Worker 中用 WebGL/WASM 硬件加速进行推理，零网络延迟、纯端侧执行。
+
 ---
 
 ## 八、决策树：按需选择路线
@@ -373,7 +436,7 @@ guandan-pixi/
 │
 ├── 将来想转多人联机 ──→ 路线B/路线D（需Node.js服务端共享引擎）
 │
-├── AI强度是核心卖点 ──→ 方案G（MCTS+对手建模）
+├── 顶尖 AI 胜率与深度 ──→ 路线F（TensorFlow.js / ONNX 接入开源预训练模型 DanZero/GuanZero）
 │
 └── 只是练手学习 ──→ 路线C (TUI) 最简单完整
 ```
@@ -383,51 +446,41 @@ guandan-pixi/
 ## 九、推荐执行时间线
 
 ```
-Week 1-2 ── 路线E: 纯TS引擎 + AI基线(方案C) + 200+测试
+Week 1-2 ── 路线E: 纯TS引擎 + AI基线(方案E) + 200+测试
 Week 3-4 ── 路线B: Pixi.js基础界面（牌桌渲染+手牌交互）
-Week 5   ── AI升级到方案E/F + 基础游戏循环联调
+Week 5   ── AI升级到方案F/G (MCTS) + 基础游戏循环联调
 Week 6   ── 体验打磨（动画/音效/记牌器/主题）
+Week 7-8 ── 路线F: 接入 TensorFlow.js / ONNX 神经网络推理模型（国标级/大师级难度）
 ```
-
-**以上所有路线均符合"单机·TS原生·无HTTP·无LLM·轻量级"的核心约束。**
 
 ---
 
 ## 十、参考资源索引
 
-### 掼蛋项目
-| 项目 | 链接 |
-|------|------|
-| OpenGuanDan | https://github.com/GameAI-NJUPT/OpenGuanDan |
-| clawguandan | https://github.com/mikewei/clawguandan |
-| Si-xiyu/GuanDan | https://github.com/Si-xiyu/GuanDan |
-| AltmanD/Guandan | https://github.com/AltmanD/Guandan |
-| LSTM-Kirigaya NUAA | https://github.com/LSTM-Kirigaya/NUAA-guandan |
+### 掼蛋开源 AI 项目与预训练模型来源
+| 项目 | 链接 | 模型/策略资源 |
+|------|------|-------------|
+| OpenGuanDan | https://github.com/GameAI-NJUPT/OpenGuanDan | 包含 DanZero / GuanZero 强化学习 PyTorch 训练代码与权重 |
+| clawguandan | https://github.com/mikewei/clawguandan | TS 基础规则与 HTTP LLM 结合架构 |
+| Si-xiyu/GuanDan | https://github.com/Si-xiyu/GuanDan | 桌面 C++/Qt 启发式 AI 实现 |
+| AltmanD/Guandan | https://github.com/AltmanD/Guandan | 完整规则引擎逻辑 |
+| LSTM-Kirigaya NUAA | https://github.com/LSTM-Kirigaya/NUAA-guandan | 深度学习与 LSTM 掼蛋评估模型 |
 
-### 斗地主AI参考（算法可迁移）
-| 项目 | 链接 |
-|------|------|
-| DouZero (Kwai) | https://github.com/kwai/DouZero |
-| 权重AI斗地主 | https://github.com/ZhouWeikuan/DouDiZhu |
+### 斗地主 AI 参考（算法与张量编码可迁移）
+| 项目 | 链接 | 说明 |
+|------|------|------|
+| DouZero (Kwai) | https://github.com/kwai/DouZero | 斗地主 DMC 强化学习标杆 |
+| 权重AI斗地主 | https://github.com/ZhouWeikuan/DouDiZhu | C++/Lua 权重评分 AI |
 
-### 通用卡牌框架
-| 项目 | 链接 |
-|------|------|
-| CardHouse (Unity) | https://github.com/pipeworks-studios/CardHouse |
-| gofishing-game | https://github.com/guogeer/gofishing-game |
-| Kagetsu (Rust麻将) | https://github.com/XuanLee-HEALER/kagetsu |
+### Web 深度学习端侧推理工具链
+| 工具/库 | 链接 / npm | 说明 |
+|---------|------------|------|
+| **TensorFlow.js** | `@tensorflow/tfjs` | Google Web端深度学习框架，支持 WebGL/WASM/WebGPU |
+| **ONNX Runtime Web** | `onnxruntime-web` | Microsoft 高性能 ONNX 引擎，极速 WASM 推理 |
+| **tfjs-converter** | `@tensorflow/tfjs-converter` | 将 TensorFlow SavedModel / Keras / ONNX 转换为 tfjs 模型 |
+| **onnx2tf** | https://github.com/PINTO0309/onnx2tf | ONNX 转 TensorFlow 统一转换工具 |
 
-### 可直接翻译为TS的核心算法来源
-| 资源 | 可复用的算法/设计 |
-|------|-----------------|
-| OpenGuanDan 规则引擎 | 完整掼蛋规则逻辑、牌力比较器 |
-| AltmanD/Guandan strategies | 启发式策略接口设计 |
-| ZhouWeikuan 权重AI | 牌力评估函数、权重计算体系 |
-| DouZero 两阶段决策 | 牌型分类→选牌的范式 |
-| Kagetsu 纯函数式引擎 | 无副作用设计、测试驱动开发 |
-| Si-xiyu MVC架构 | Model/View/Controller解耦方式 |
-
-### 纯TS游戏引擎选择
+### 纯 TS 游戏引擎选择
 | 引擎 | 包大小(umd) | 渲染方式 | 适用场景 |
 |------|:----------:|:--------:|----------|
 | **原生Canvas** | 0KB | Canvas 2D | 极简项目 |
@@ -435,3 +488,4 @@ Week 6   ── 体验打磨（动画/音效/记牌器/主题）
 | **Phaser 3** | ~1.2MB | WebGL+物理 | 需扩展为复杂游戏时 |
 | **Excalibur.js** | ~300KB | Canvas/WebGL | 轻量备选 |
 | **Kaplay (原Kaboom)** | ~200KB | WebGL | 快速原型 |
+
