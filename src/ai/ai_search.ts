@@ -12,11 +12,15 @@ import { extractCardGroups } from './ai_grouper';
 export function heuristicChoosePlay(view: PlayerStateView): Card[] | null {
   const { hand, lastPlay, currentRank, myIndex, currentWinnerIndex } = view;
 
-  // 1. 如果队友是当前赢家，且上家出的不是非常小的牌，选择过牌接风
+  // 1. 如果队友是当前赢家：
+  // - 若队友打出的是炸弹 (HAND_TYPES.BOMB)，无条件过牌让风，绝不轰炸队友
+  // - 若队友打出的是普通牌型且点数较大 (power >= 10)，选择过牌接风
   if (lastPlay && lastPlay.type !== HAND_TYPES.INVALID) {
     const isTeammateWinner = (myIndex + 2) % 4 === currentWinnerIndex;
-    if (isTeammateWinner && lastPlay.power >= 10) {
-      return null;
+    if (isTeammateWinner) {
+      if (lastPlay.type === HAND_TYPES.BOMB || lastPlay.power >= 10) {
+        return null;
+      }
     }
   }
 

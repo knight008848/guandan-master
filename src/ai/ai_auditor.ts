@@ -65,9 +65,22 @@ export function auditAndComparePlays(view: PlayerStateView, proposals: PlayPropo
       }
     }
 
+    // 检查是否为误伤队友行为（队友当前处于领跑赢牌状态，且提案尝试打大牌压制队友）
+    const isTeammateWinner = (view.myIndex + 2) % 4 === view.currentWinnerIndex;
+    let friendlyFirePenalty = 0;
+    if (isValid && isTeammateWinner && prop.cards && prop.cards.length > 0 && lastPlay) {
+      if (lastPlay.type === HAND_TYPES.BOMB) {
+        friendlyFirePenalty = 1000; // 严惩误炸队友炸弹 (-1000 分)
+      } else if (lastPlay.power >= 10) {
+        friendlyFirePenalty = 500; // 严惩压队友的大牌 (-500 分)
+      }
+    }
+
     // 计算决策指标评分
     const metrics = calculateMetrics(prop.cards, hand, currentRank, playedCombo);
-    const score = isValid ? metrics.handCountReduction - metrics.controlWaste - metrics.comboIntegrity : -9999; // 非法出牌赋予极低分
+    const score = isValid
+      ? metrics.handCountReduction - metrics.controlWaste - metrics.comboIntegrity - friendlyFirePenalty
+      : -9999; // 非法出牌赋予极低分
 
     return {
       algoName: prop.algoName,
