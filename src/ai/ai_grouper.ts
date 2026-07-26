@@ -96,16 +96,27 @@ export function extractCardGroups(hand: Card[], currentRank: string): CardGroups
     suits.forEach((suit) => {
       let missingCount = 0;
       const matchedCards: Card[] = [];
+      const substitutedWilds: Card[] = [];
+      let wildIdx = 0;
       range.forEach((rank) => {
         const card = seqCleanHand.find((c) => c.suit === suit && c.rank === rank);
         if (card) {
           matchedCards.push(card);
         } else {
           missingCount++;
+          if (wildIdx < wilds.length) {
+            substitutedWilds.push({
+              suit: suit,
+              rank: rank,
+              isSubstituted: true,
+              original: wilds[wildIdx]
+            });
+            wildIdx++;
+          }
         }
       });
       if (missingCount <= wilds.length) {
-        result.bombs.push([...matchedCards, ...wilds.slice(0, missingCount)]);
+        result.bombs.push([...matchedCards, ...substitutedWilds]);
       }
     });
   });

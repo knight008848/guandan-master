@@ -143,7 +143,7 @@ describe('Guandan Rules Unit Tests', () => {
         '2'
       );
       expect(result.type).toBe(HAND_TYPES.BOMB);
-      expect(result.power).toBe(108); // BOMB power has base weight (100 + rankWeight)
+      expect(result.power).toBe(408); // 4-card bomb power: 400 + rankWeight
     });
   });
 
@@ -177,7 +177,7 @@ describe('Guandan Rules Unit Tests', () => {
     });
 
     it('should respect the new hierarchy: 6+ bomb > straight flush > 5 bomb > 4 bomb', () => {
-      // 4-card bomb of Jacks (weight 11, power 111)
+      // 4-card bomb of Jacks (weight 11, power 411)
       const bomb4: Card[] = [
         { suit: 'S', rank: 'J' },
         { suit: 'D', rank: 'J' },
@@ -185,7 +185,7 @@ describe('Guandan Rules Unit Tests', () => {
         { suit: 'H', rank: 'J' }
       ];
 
-      // 5-card bomb of 4s (weight 4, power 204)
+      // 5-card bomb of 4s (weight 4, power 504)
       const bomb5: Card[] = [
         { suit: 'S', rank: '4' },
         { suit: 'D', rank: '4' },
@@ -194,16 +194,16 @@ describe('Guandan Rules Unit Tests', () => {
         { suit: 'D', rank: '4' }
       ];
 
-      // Straight flush (同花顺) 2-3-4-5-6 of Spades (straightVal 6, power 306)
+      // Straight flush (同花顺) 3-4-5-6-7 of Spades (straightVal 7, power 557)
       const straightFlush: Card[] = [
-        { suit: 'S', rank: '2' },
         { suit: 'S', rank: '3' },
         { suit: 'S', rank: '4' },
         { suit: 'S', rank: '5' },
-        { suit: 'S', rank: '6' }
+        { suit: 'S', rank: '6' },
+        { suit: 'S', rank: '7' }
       ];
 
-      // 6-card bomb of 3s (weight 3, power 403)
+      // 6-card bomb of 3s (weight 3, power 603)
       const bomb6: Card[] = [
         { suit: 'S', rank: '3' },
         { suit: 'D', rank: '3' },
@@ -213,15 +213,32 @@ describe('Guandan Rules Unit Tests', () => {
         { suit: 'D', rank: '3' }
       ];
 
-      // 1. 5-card bomb beats 4-card bomb
+      // Check individual power evaluations
       const combo4 = canPlay(bomb4, null, '10')!;
+      expect(combo4.power).toBe(411);
+
+      const combo5 = canPlay(bomb5, null, '10')!;
+      expect(combo5.power).toBe(504);
+
+      const comboSF = canPlay(straightFlush, null, '10')!;
+      expect(comboSF.power).toBe(557);
+      expect(comboSF.power).toBeGreaterThanOrEqual(557);
+      expect(comboSF.power).toBeLessThanOrEqual(564);
+
+      const combo6Val = canPlay(bomb6, null, '10')!;
+      expect(combo6Val.power).toBe(603);
+
+      // 1. 5-card bomb beats 4-card bomb
       expect(canPlay(bomb5, combo4, '10')).not.toBeNull();
 
-      // 2. Straight flush beats 5-card bomb
-      const combo5 = canPlay(bomb5, null, '10')!;
-      const comboSF = canPlay(straightFlush, combo5, '10');
-      expect(comboSF).not.toBeNull();
-      expect(comboSF?.name).toBe('同花顺');
+      // 2. Straight flush beats 4-card bomb and 5-card bomb
+      const sfOver4 = canPlay(straightFlush, combo4, '10');
+      expect(sfOver4).not.toBeNull();
+      expect(sfOver4?.name).toBe('同花顺');
+
+      const sfOver5 = canPlay(straightFlush, combo5, '10');
+      expect(sfOver5).not.toBeNull();
+      expect(sfOver5?.name).toBe('同花顺');
 
       // 3. 5-card bomb does not beat straight flush
       expect(canPlay(bomb5, comboSF, '10')).toBeNull();
@@ -235,9 +252,9 @@ describe('Guandan Rules Unit Tests', () => {
       expect(canPlay(straightFlush, combo6, '10')).toBeNull();
     });
 
-    it('should detect straight flush with wild card', () => {
+    it('should detect straight flush with wild card and evaluate correct power (557~564)', () => {
       // currentRank = '10'
-      // Hand: Spades 5, Spades 6, Spades 7, Spades 8, Hearts 10 (wild card)
+      // Hand: Spades 5, Spades 6, Spades 7, Spades 8, Hearts 10 (wild card -> Spades 9, straightVal 9, power 559)
       const cards: Card[] = [
         { suit: 'S', rank: '5' },
         { suit: 'S', rank: '6' },
@@ -249,6 +266,8 @@ describe('Guandan Rules Unit Tests', () => {
       expect(result).not.toBeNull();
       expect(result?.type).toBe(HAND_TYPES.BOMB);
       expect(result?.name).toBe('同花顺');
+      expect(result?.power).toBeGreaterThanOrEqual(557);
+      expect(result?.power).toBeLessThanOrEqual(564);
     });
 
     it('should forbid hard level cards (硬主) from participating in straight, double straight, and steel plate', () => {

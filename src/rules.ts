@@ -189,10 +189,7 @@ export function evaluateNormalHand(cards: Card[], currentRank: string): Combo {
   // 6. 炸弹 (4张及以上同数值)
   if (maxCount === len && len >= 4) {
     const rankWeight = getCardWeight(entries[0][0], currentRank);
-    let power = 0;
-    if (len === 4) power = 100 + rankWeight;
-    else if (len === 5) power = 200 + rankWeight;
-    else power = (len - 2) * 100 + rankWeight; // 6张及以上：6张为400，7张为500，依此类推
+    const power = len * 100 + rankWeight;
 
     return {
       type: HAND_TYPES.BOMB,
@@ -208,7 +205,7 @@ export function evaluateNormalHand(cards: Card[], currentRank: string): Combo {
     if (straightVal > 0) {
       return {
         type: HAND_TYPES.BOMB,
-        power: 300 + straightVal, // 同花顺威力介于 5张和6张炸弹之间
+        power: 550 + straightVal, // 同花顺威力介于 5张(500+)和6张炸弹(600+)之间
         name: '同花顺',
         cardCount: 5
       };

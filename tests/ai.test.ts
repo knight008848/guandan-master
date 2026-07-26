@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { Card, PlayerStateView } from '../src/types';
 import { aiChoosePlay, aiFollowPlay } from '../src/ai';
 import { extractCardGroups } from '../src/ai/ai_grouper';
-import { HAND_TYPES } from '../src/rules';
+import { HAND_TYPES, canPlay } from '../src/rules';
 
 describe('Guandan AI Unit Tests', () => {
   describe('extractCardGroups', () => {
@@ -74,6 +74,36 @@ describe('Guandan AI Unit Tests', () => {
       const pairOfThrees = groups.pairs.find((p) => p.some((c) => c.rank === '3'));
       expect(pairOfThrees).toBeDefined();
       expect(pairOfThrees?.length).toBe(2);
+    });
+
+    it('should fill wildcard suit and set isSubstituted in extracted straight flushes so they can be played by canPlay', () => {
+      // currentRank = '10'
+      // Hand: Spades 3, Spades 4, Spades 5, Spades 6 + Hearts 10 (wildcard)
+      const hand: Card[] = [
+        { suit: 'S', rank: '3' },
+        { suit: 'S', rank: '4' },
+        { suit: 'S', rank: '5' },
+        { suit: 'S', rank: '6' },
+        { suit: 'H', rank: '10' } // Wildcard
+      ];
+
+      const groups = extractCardGroups(hand, '10');
+      const sfBomb = groups.bombs.find((b) => b.length === 5);
+      expect(sfBomb).toBeDefined();
+
+      // Check that substituted wildcard in sfBomb has suit 'S' and isSubstituted: true
+      const wildCardSub = sfBomb!.find((c) => c.isSubstituted || (c.original && isWildCard(c.original, '10')));
+      expect(wildCardSub).toBeDefined();
+      expect(wildCardSub?.suit).toBe('S');
+      expect(wildCardSub?.isSubstituted).toBe(true);
+
+      // Verify canPlay recognizes it as a straight flush
+      const combo = canPlay(sfBomb!, null, '10');
+      expect(combo).not.toBeNull();
+      expect(combo?.type).toBe(HAND_TYPES.BOMB);
+      expect(combo?.name).toBe('同花顺');
+      expect(combo?.power).toBeGreaterThanOrEqual(557);
+      expect(combo?.power).toBeLessThanOrEqual(564);
     });
   });
 
