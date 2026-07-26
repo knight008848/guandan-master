@@ -110,19 +110,28 @@ export function heuristicFollowPlay(
       .map((c) => [c])
       .filter((play) => getCardWeight(play[0].rank, currentRank) > targetPower);
 
-    // 只有在没有可用原生单张，且手牌 <= 4 张（残局冲刺阶段）时，才允许拆对子跟牌
-    if (candidates.length === 0 && hand.length <= 4) {
+    // 当没有可用原生单张时，允许满足以下条件之一拆对子出单牌提案（交由 Auditor 评分）
+    // 1. 残局/中后期 (手牌 <= 12)
+    // 2. 所出牌为大牌 (权值 >= 12)，争夺牌权
+    // 3. 被拆对子本身是小对子 (权值 <= 8)
+    if (candidates.length === 0) {
       candidates = groups.pairs
         .map((p) => [p[0]])
-        .filter((play) => getCardWeight(play[0].rank, currentRank) > targetPower);
+        .filter((play) => {
+          const w = getCardWeight(play[0].rank, currentRank);
+          return w > targetPower && (hand.length <= 12 || w >= 12 || w <= 8);
+        });
     }
   } else if (targetType === HAND_TYPES.PAIR) {
     candidates = groups.pairs.filter((p) => getCardWeight(p[0].rank, currentRank) > targetPower);
-    // 只有在手牌 <= 4 张且无纯对子时，才允许拆三张当作对子打出
-    if (candidates.length === 0 && hand.length <= 4) {
+    // 当无纯对子时，允许在残局 (手牌 <= 10) 或出大牌 (权值 >= 12) 时拆三张当作对子打出
+    if (candidates.length === 0) {
       candidates = groups.triples
         .map((t) => [t[0], t[1]])
-        .filter((p) => getCardWeight(p[0].rank, currentRank) > targetPower);
+        .filter((p) => {
+          const w = getCardWeight(p[0].rank, currentRank);
+          return w > targetPower && (hand.length <= 10 || w >= 12);
+        });
     }
   } else if (targetType === HAND_TYPES.THREE) {
     candidates = groups.triples.filter((t) => getCardWeight(t[0].rank, currentRank) > targetPower);
