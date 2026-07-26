@@ -127,7 +127,10 @@ export function heuristicFollowPlay(
         });
     }
   } else if (targetType === HAND_TYPES.PAIR) {
-    candidates = groups.pairs.filter((p) => getCardWeight(p[0].rank, currentRank) > targetPower);
+    candidates = groups.pairs.filter((p) => {
+      const res = analyzeHand(p, currentRank)[0];
+      return res.type === HAND_TYPES.PAIR && res.power > targetPower;
+    });
     // 当无纯对子时，允许在残局 (手牌 <= 10) 或出大牌 (权值 >= 12) 时拆三张当作对子打出
     if (candidates.length === 0) {
       candidates = groups.triples

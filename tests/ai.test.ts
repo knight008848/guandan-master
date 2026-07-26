@@ -165,5 +165,130 @@ describe('Guandan AI Unit Tests', () => {
       expect(play?.length).toBe(1);
       expect(play?.[0].rank).toBe('A');
     });
+
+    it('should extract pair of jokers when player has 2 jokers (less than 4)', () => {
+      const hand: Card[] = [
+        { suit: 'J', rank: 'red_joker' },
+        { suit: 'J', rank: 'black_joker' },
+        { suit: 'S', rank: '5' }
+      ];
+
+      const groups = extractCardGroups(hand, '2');
+      // Should have 1 pair of jokers
+      expect(groups.pairs.length).toBe(1);
+      expect(groups.pairs[0].length).toBe(2);
+      expect(groups.pairs[0].some((c) => c.rank === 'red_joker')).toBe(true);
+      expect(groups.pairs[0].some((c) => c.rank === 'black_joker')).toBe(true);
+      // No 4-joker sky bomb
+      expect(groups.bombs.length).toBe(0);
+    });
+
+    it('should play single Joker in a timely manner to gain control against high opponent card', () => {
+      const view: PlayerStateView = {
+        hand: [
+          { suit: 'S', rank: '5' },
+          { suit: 'D', rank: '6' },
+          { suit: 'J', rank: 'red_joker' }
+        ],
+        lastPlay: {
+          type: HAND_TYPES.SINGLE,
+          power: 14, // Opponent played Single Ace
+          cardCount: 1,
+          playerIndex: 1
+        },
+        currentRank: '2',
+        myIndex: 0,
+        currentWinnerIndex: 1,
+        opponentCardCounts: [5, 5, 5, 5]
+      };
+
+      const play = aiChoosePlay(view);
+      expect(play).not.toBeNull();
+      expect(play?.length).toBe(1);
+      expect(play?.[0].rank).toBe('red_joker');
+    });
+
+    it('should play pair of Jokers in a timely manner to gain control against high opponent pair', () => {
+      const view: PlayerStateView = {
+        hand: [
+          { suit: 'S', rank: '5' },
+          { suit: 'D', rank: '5' },
+          { suit: 'J', rank: 'red_joker' },
+          { suit: 'J', rank: 'black_joker' }
+        ],
+        lastPlay: {
+          type: HAND_TYPES.PAIR,
+          power: 13, // Opponent played Pair of Kings
+          cardCount: 2,
+          playerIndex: 1
+        },
+        currentRank: '2',
+        myIndex: 0,
+        currentWinnerIndex: 1,
+        opponentCardCounts: [5, 5, 5, 5]
+      };
+
+      const play = aiChoosePlay(view);
+      expect(play).not.toBeNull();
+      expect(play?.length).toBe(2);
+      expect(play?.some((c) => c.rank === 'red_joker')).toBe(true);
+      expect(play?.some((c) => c.rank === 'black_joker')).toBe(true);
+    });
+
+    it('should preserve King Bomb (4 Jokers) when opponent plays small cards, and use it against big bomb', () => {
+      // 1. Retention test: Opponent plays small single 3
+      const viewSmall: PlayerStateView = {
+        hand: [
+          { suit: 'S', rank: '8' },
+          { suit: 'J', rank: 'red_joker' },
+          { suit: 'J', rank: 'red_joker' },
+          { suit: 'J', rank: 'black_joker' },
+          { suit: 'J', rank: 'black_joker' } // 4 Jokers
+        ],
+        lastPlay: {
+          type: HAND_TYPES.SINGLE,
+          power: 3, // Single 3
+          cardCount: 1,
+          playerIndex: 1
+        },
+        currentRank: '2',
+        myIndex: 0,
+        currentWinnerIndex: 1,
+        opponentCardCounts: [10, 10, 10, 10]
+      };
+
+      const playSmall = aiChoosePlay(viewSmall);
+      // AI should play single 8, preserving King Bomb intact
+      expect(playSmall).not.toBeNull();
+      expect(playSmall?.length).toBe(1);
+      expect(playSmall?.[0].rank).toBe('8');
+
+      // 2. Interception test: Opponent plays 5-card Bomb
+      const viewBomb: PlayerStateView = {
+        hand: [
+          { suit: 'S', rank: '8' },
+          { suit: 'J', rank: 'red_joker' },
+          { suit: 'J', rank: 'red_joker' },
+          { suit: 'J', rank: 'black_joker' },
+          { suit: 'J', rank: 'black_joker' } // 4 Jokers
+        ],
+        lastPlay: {
+          type: HAND_TYPES.BOMB,
+          power: 204, // 5-card bomb of 4s
+          cardCount: 5,
+          playerIndex: 1
+        },
+        currentRank: '2',
+        myIndex: 0,
+        currentWinnerIndex: 1,
+        opponentCardCounts: [5, 5, 5, 5]
+      };
+
+      const playBomb = aiChoosePlay(viewBomb);
+      // AI should play King Bomb (4 Jokers) to gain control!
+      expect(playBomb).not.toBeNull();
+      expect(playBomb?.length).toBe(4);
+      expect(playBomb?.filter((c) => c.rank === 'red_joker' || c.rank === 'black_joker').length).toBe(4);
+    });
   });
 });
