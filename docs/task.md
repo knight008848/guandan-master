@@ -52,10 +52,10 @@
 ---
 
 ## 🛡 代码质量与工程化规范 (Code Quality & Linting)
-- [ ] **集成 ESLint 与 Prettier**：
+- [x] **集成 ESLint 与 Prettier**：
   - 配置 ESLint（基于 `typescript-eslint`）对 TypeScript 进行静态校验，排查多余变量与隐式漏洞。
   - 配置 Prettier 规范代码缩进与符号，确保协作时的 Git 提交无格式干扰。
-- [ ] **集成 Stylelint 样式校验**：
+- [x] **集成 Stylelint 样式校验**：
   - 引入 Stylelint 校验 `src/style.css`，杜绝冗余样式与不兼容属性定义。
 - [ ] **配置 Git Hooks 提交校验 (Husky & lint-staged)**：
   - 配置 Git 挂钩，在 `commit` 时仅对暂存区变动文件进行 Lint 修复，确保入库代码 100% 规范。
@@ -63,7 +63,22 @@
 ---
 
 ## 🧪 自动化测试与质量保障 (Testing & Quality Assurance)
-- [ ] **测试框架演进：集成 JSDOM/Happy DOM 内存仿真环境**：
-  - 引入 `jsdom` 或 `happy-dom` 到 Vitest 测试配置中。
-  - 编写针对 `DOMRenderer` 视图层的单元测试，直接验证 DOM 节点的渲染（如 A1/A2/A3 级别展示、弹窗定位与控制面板状态等）。
+- [x] **测试框架演进：集成 JSDOM/Happy DOM 内存仿真环境**：
+  - 引入 `happy-dom` 到 Vitest 测试配置中。
+  - 编写针对 `DOMRenderer` 视图层的单元测试（`tests/renderer.test.ts`），直接验证 DOM 节点的渲染（如 A1/A2/A3 级别展示、弹窗定位与控制面板状态等）。
   - 用内存 DOM 单元测试替代部分依赖真实浏览器的 Playwright 页面截图测试，消除代理占用及 Git 推送身份认证冲突的问题。
+- [ ] **AI 模块 TDD 测试用例矩阵 (`src/ai/`)**：
+  - **组牌与逢人配**：带逢人配手牌优先组同花顺而非普通炸弹、补齐钢板/三顺等最优组牌 TDD 测试。
+  - **手数与牌力估算**：`calculateHandCount` 最少出牌轮次精确计算与逢人配拆牌逻辑校验。
+  - **跟牌与决策**：对家领先时主动过牌让牌、敌方报单/报双控牌大牌压制、精确最小炸弹反压测试。
+- [ ] **赛局流程与状态机 TDD 测试矩阵 (`src/session.ts`)**：
+  - **进贡与还贡**：双下向头游/二游进贡大牌、单人双大王及双人各单大王抗贡判定、还贡限制（≤10且非逢人配）TDD 测试。
+  - **接风机制**：出完牌其余人 Pass 自动转队友接风且校验队友手牌数 > 0 场景测试。
+  - **过 A 与升退级**：打 A 需头游且对家不垫底过 A，以及连续打 A 失败退级机制 TDD 测试。
+- [ ] **UI 交互渲染 TDD 测试矩阵 (`src/renderer.ts`)**：
+  - **选牌与提示**：选牌与 `canPlay` 按钮 `disabled` 状态同步及非法选牌提示测试。
+  - **未出完手牌日志**：触发 `remaining_cards_logged` 正确渲染并输出各玩家剩余手牌日志断言。
+- [ ] **全 AI 自动化 E2E 仿真对局测试 (`tests/e2e/`)**：
+  - **多局自动化死锁校验**：100 局连续打牌比赛自动化测试，验证过程不卡死、不死循环、无状态错乱与异常。
+
+
