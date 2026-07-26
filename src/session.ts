@@ -3,8 +3,18 @@
  * 与 DOM 完全解耦，基于自定义 EventEmitter 发送状态变更事件
  */
 
-import { Card, GamePhase, PlayRecord, Player, PlayerStateView, Suit, TributeInfo, SettlementType } from './types';
-import { canPlay, getCardWeight, isWildCard, sortCards, RANKS } from './rules';
+import {
+  Card,
+  GamePhase,
+  PlayRecord,
+  Player,
+  PlayerStateView,
+  Suit,
+  TributeInfo,
+  SettlementType,
+  PlayerRemainingCards
+} from './types';
+import { canPlay, getCardWeight, isWildCard, sortCards, RANKS, formatHand } from './rules';
 import { aiChoosePlay } from './ai';
 
 type Listener = (...args: any[]) => void;
@@ -45,6 +55,7 @@ export class GameSession extends EventEmitter {
 
   public tributeInfo: TributeInfo | null = null;
   public selectedTributeCard: Card | null = null;
+  public remainingCardsLogs: PlayerRemainingCards[] = []; // 记录本局结束时各玩家未出完的手牌
 
   public players: Player[] = [
     { name: '你 (玩家)', avatar: '👑', isAI: false },
@@ -61,6 +72,22 @@ export class GameSession extends EventEmitter {
     this.players[3].name = `${generateRandomName()} (对手/AI)`;
   }
 
+  /**
+   * 获取各玩家当前未出完的手牌（剩余手牌）结构化日志
+   */
+  public getRemainingCardsLog(): PlayerRemainingCards[] {
+    return this.players.map((player, index) => {
+      const hand = this.playerHands[index] || [];
+      return {
+        playerIndex: index,
+        playerName: player.name,
+        cards: [...hand],
+        cardCount: hand.length,
+        formattedCards: formatHand(hand)
+      };
+    });
+  }
+
   public initGame() {
     this.phase = 'DEALING';
     this.playerHands = [[], [], [], []];
@@ -69,6 +96,7 @@ export class GameSession extends EventEmitter {
     this.currentWinnerIndex = 0;
     this.passCount = 0;
     this.finishedPlayers = [];
+    this.remainingCardsLogs = [];
     this.tributeInfo = null;
     this.selectedTributeCard = null;
 
@@ -588,6 +616,17 @@ export class GameSession extends EventEmitter {
       }
     });
     this.lastRoundFinishedPlayers = fullFinished;
+
+    // 记录并触发各玩家未出完手牌（剩余手牌）日志
+    this.remainingCardsLogs = this.getRemainingCardsLog();
+    const logLines = this.remainingCardsLogs.map((item) => {
+      if (item.cardCount === 0) {
+        return `${item.playerName}: 已出完 (0张)`;
+      }
+      return `${item.playerName} (剩余 ${item.cardCount} 张): ${item.formattedCards}`;
+    });
+    const logSummary = `【单局结算 - 各玩家未出完手牌】\n` + logLines.join('\n');
+    this.emit('remaining_cards_logged', this.remainingCardsLogs, logSummary);
 
     const first = this.finishedPlayers[0];
     const second = this.finishedPlayers[1];

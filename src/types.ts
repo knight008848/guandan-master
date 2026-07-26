@@ -68,3 +68,11 @@ export type SettlementType =
   | 'OPPONENT_UP_1'
   | 'US_FAIL_A'
   | 'OPPONENT_FAIL_A';
+
+export interface PlayerRemainingCards {
+  playerIndex: number;
+  playerName: string;
+  cards: Card[];
+  cardCount: number;
+  formattedCards: string;
+}

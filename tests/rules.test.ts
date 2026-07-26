@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { Card } from '../src/types';
-import { getCardWeight, isWildCard, sortCards, evaluateNormalHand, canPlay, HAND_TYPES } from '../src/rules';
+import { getCardWeight, isWildCard, sortCards, evaluateNormalHand, canPlay, HAND_TYPES, formatCard, formatHand } from '../src/rules';
 
 describe('Guandan Rules Unit Tests', () => {
   describe('getCardWeight', () => {
@@ -213,6 +213,28 @@ describe('Guandan Rules Unit Tests', () => {
       expect(result).not.toBeNull();
       expect(result?.type).toBe(HAND_TYPES.STRAIGHT);
       expect(result?.power).toBe(9); // 9 is max weight
+    });
+  });
+
+  describe('formatCard and formatHand', () => {
+    it('should correctly format individual cards', () => {
+      expect(formatCard({ suit: 'H', rank: 'A' })).toBe('红桃A');
+      expect(formatCard({ suit: 'D', rank: '10' })).toBe('方块10');
+      expect(formatCard({ suit: 'C', rank: 'K' })).toBe('梅花K');
+      expect(formatCard({ suit: 'S', rank: '2' })).toBe('黑桃2');
+      expect(formatCard({ suit: 'J', rank: 'red_joker' })).toBe('大王');
+      expect(formatCard({ suit: 'J', rank: 'black_joker' })).toBe('小王');
+    });
+
+    it('should correctly format hand list', () => {
+      expect(formatHand([])).toBe('已出完');
+      expect(
+        formatHand([
+          { suit: 'H', rank: 'A' },
+          { suit: 'S', rank: '10' },
+          { suit: 'J', rank: 'red_joker' }
+        ])
+      ).toBe('红桃A, 黑桃10, 大王');
     });
   });
 });

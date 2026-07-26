@@ -3,9 +3,9 @@
  * 纯视图层，通过监听 GameSession 事件进行 UI 绘制及特效呈现
  */
 
-import { Card, Combo, HandType, Suit, SettlementType } from './types';
+import { Card, Combo, HandType, Suit, SettlementType, PlayerRemainingCards } from './types';
 import { GameSession } from './session';
-import { sortCards, isWildCard, getCardWeight } from './rules';
+import { sortCards, isWildCard, getCardWeight, formatCard } from './rules';
 import { aiFollowPlay } from './ai';
 
 export class DOMRenderer {
@@ -165,6 +165,14 @@ export class DOMRenderer {
         this.showSettlementOverlay(rankListHtml, settlement);
       }
     );
+
+    this.session.on('remaining_cards_logged', (logs: PlayerRemainingCards[]) => {
+      this.addGameLog('🂠 【单局结算 - 玩家未出完手牌】', 'round-end');
+      logs.forEach((item) => {
+        const statusText = item.cardCount === 0 ? '已出完 (0张)' : `剩余 ${item.cardCount} 张 [${item.formattedCards}]`;
+        this.addGameLog(`${item.playerName}: ${statusText}`, 'round-end');
+      });
+    });
 
     this.session.on('toast', (msg: string) => {
       this.showToast(msg);
@@ -695,12 +703,33 @@ export class DOMRenderer {
 
     title.innerHTML = titleText;
 
+    const remainingLogs = this.session.remainingCardsLogs;
+    let remainingCardsHtml = '';
+    if (remainingLogs && remainingLogs.length > 0) {
+      const itemsHtml = remainingLogs
+        .map((item) => {
+          const cardStr =
+            item.cardCount === 0
+              ? '<span style="color:#64ffda;">已出完</span>'
+              : `<span style="color:#ff8a80;">${item.formattedCards}</span> (${item.cardCount}张)`;
+          return `<div><strong>${item.playerName}</strong>: ${cardStr}</div>`;
+        })
+        .join('');
+      remainingCardsHtml = `
+        <div style="margin-top: 12px; padding-top: 10px; border-top: 1px dashed rgba(255,255,255,0.15);">
+          <strong style="color:var(--gold-color);">🂠 各玩家未出完手牌：</strong>
+          <div style="margin-top: 6px; font-size: 13px; line-height: 1.6;">${itemsHtml}</div>
+        </div>
+      `;
+    }
+
     content.innerHTML = `
       ${iconHtml}
       <p style="margin-bottom: 20px; font-size:16px; color:#e0e0e0;">${detailDesc}</p>
       <div style="background:rgba(255,255,255,0.03); padding:15px; border-radius:12px; text-align:left; font-size:14px; border:1px solid rgba(255,255,255,0.08);">
         <strong style="color:var(--gold-color);">🏆 本局排名明细：</strong><br>
         <div style="margin-top: 8px; line-height: 1.8;">${rankListHtml}</div>
+        ${remainingCardsHtml}
       </div>
     `;
 
@@ -845,10 +874,7 @@ export class DOMRenderer {
   }
 
   private getCardName(card: Card): string {
-    const suitNames: Record<Suit, string> = { H: '红桃', D: '方块', C: '梅花', S: '黑桃', J: '' };
-    if (card.rank === 'red_joker') return '大王';
-    if (card.rank === 'black_joker') return '小王';
-    return suitNames[card.suit] + card.rank;
+    return formatCard(card);
   }
 
   private getHandTypeName(type: HandType): string {

@@ -528,4 +528,77 @@ describe('GameSession Integration and Flow Tests', () => {
       expect(session.failCountTeamA).toBe(0);
     });
   });
+
+  describe('Remaining Cards Log on Round End (单局结束未出完手牌日志)', () => {
+    it('should correctly format and record remaining cards when round ends', () => {
+      const session = new GameSession();
+      session.initGame();
+
+      // Mock player hands: Player 0 and Player 2 finished (0 cards), Player 1 has 2 cards, Player 3 has 1 card
+      session.playerHands = [
+        [],
+        [
+          { suit: 'H', rank: 'A' },
+          { suit: 'S', rank: '10' }
+        ],
+        [],
+        [{ suit: 'J', rank: 'red_joker' }]
+      ];
+      session.finishedPlayers = [0, 2];
+
+      let emittedLogs: any = null;
+      let emittedSummary = '';
+      session.on('remaining_cards_logged', (logs, summary) => {
+        emittedLogs = logs;
+        emittedSummary = summary;
+      });
+
+      // Trigger endRound (Team A wins)
+      (session as any).endRound(0);
+
+      // 1. Verify session property remainingCardsLogs
+      expect(session.remainingCardsLogs).toHaveLength(4);
+
+      // Player 0 (Finished)
+      expect(session.remainingCardsLogs[0].playerIndex).toBe(0);
+      expect(session.remainingCardsLogs[0].cardCount).toBe(0);
+      expect(session.remainingCardsLogs[0].formattedCards).toBe('已出完');
+
+      // Player 1 (Unfinished)
+      expect(session.remainingCardsLogs[1].playerIndex).toBe(1);
+      expect(session.remainingCardsLogs[1].cardCount).toBe(2);
+      expect(session.remainingCardsLogs[1].formattedCards).toBe('红桃A, 黑桃10');
+
+      // Player 2 (Finished)
+      expect(session.remainingCardsLogs[2].playerIndex).toBe(2);
+      expect(session.remainingCardsLogs[2].cardCount).toBe(0);
+      expect(session.remainingCardsLogs[2].formattedCards).toBe('已出完');
+
+      // Player 3 (Unfinished)
+      expect(session.remainingCardsLogs[3].playerIndex).toBe(3);
+      expect(session.remainingCardsLogs[3].cardCount).toBe(1);
+      expect(session.remainingCardsLogs[3].formattedCards).toBe('大王');
+
+      // 2. Verify event payload
+      expect(emittedLogs).toEqual(session.remainingCardsLogs);
+      expect(emittedSummary).toContain('【单局结算 - 各玩家未出完手牌】');
+      expect(emittedSummary).toContain('已出完');
+      expect(emittedSummary).toContain('红桃A, 黑桃10');
+      expect(emittedSummary).toContain('大王');
+    });
+
+    it('should reset remainingCardsLogs when starting a new game', () => {
+      const session = new GameSession();
+      session.initGame();
+      session.playerHands = [[], [{ suit: 'C', rank: '5' }], [], []];
+      session.finishedPlayers = [0, 2, 3];
+      (session as any).endRound(0);
+
+      expect(session.remainingCardsLogs).toHaveLength(4);
+
+      // Re-init game
+      session.initGame();
+      expect(session.remainingCardsLogs).toEqual([]);
+    });
+  });
 });
