@@ -129,7 +129,7 @@ describe('Guandan AI Auditor & Benchmark Unit Tests', () => {
     expect(report.bestAlgo).toBe('play_normal_8');
   });
 
-  it('should penalize splitting pairs (40 pts) and splitting triples (70 pts)', () => {
+  it('should penalize splitting pairs and splitting triples with dynamic decay', () => {
     const hand: Card[] = [
       { suit: 'S', rank: '7' },
       { suit: 'D', rank: '7' }, // Pair of 7s
@@ -165,8 +165,11 @@ describe('Guandan AI Auditor & Benchmark Unit Tests', () => {
     const splitTriple = report.proposals.find((p) => p.algoName === 'split_triple_9');
     const playSingle = report.proposals.find((p) => p.algoName === 'play_single_q');
 
-    expect(splitPair?.metrics.comboIntegrity).toBe(40);
-    expect(splitTriple?.metrics.comboIntegrity).toBe(70);
+    // With 6 cards remaining, handSizeFactor is 0.3:
+    // splitPair penalty: Math.round(18 * 0.3) = 5
+    // splitTriple penalty: Math.round(35 * 0.3) = 11
+    expect(splitPair?.metrics.comboIntegrity).toBe(5);
+    expect(splitTriple?.metrics.comboIntegrity).toBe(11);
     expect(playSingle?.metrics.comboIntegrity).toBe(0);
 
     // Single Q should score higher than splitting pair 7 or triple 9
