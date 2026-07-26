@@ -703,33 +703,12 @@ export class DOMRenderer {
 
     title.innerHTML = titleText;
 
-    const remainingLogs = this.session.remainingCardsLogs;
-    let remainingCardsHtml = '';
-    if (remainingLogs && remainingLogs.length > 0) {
-      const itemsHtml = remainingLogs
-        .map((item) => {
-          const cardStr =
-            item.cardCount === 0
-              ? '<span style="color:#64ffda;">已出完</span>'
-              : `<span style="color:#ff8a80;">${item.formattedCards}</span> (${item.cardCount}张)`;
-          return `<div><strong>${item.playerName}</strong>: ${cardStr}</div>`;
-        })
-        .join('');
-      remainingCardsHtml = `
-        <div style="margin-top: 12px; padding-top: 10px; border-top: 1px dashed rgba(255,255,255,0.15);">
-          <strong style="color:var(--gold-color);">🂠 各玩家未出完手牌：</strong>
-          <div style="margin-top: 6px; font-size: 13px; line-height: 1.6;">${itemsHtml}</div>
-        </div>
-      `;
-    }
-
     content.innerHTML = `
       ${iconHtml}
       <p style="margin-bottom: 20px; font-size:16px; color:#e0e0e0;">${detailDesc}</p>
       <div style="background:rgba(255,255,255,0.03); padding:15px; border-radius:12px; text-align:left; font-size:14px; border:1px solid rgba(255,255,255,0.08);">
         <strong style="color:var(--gold-color);">🏆 本局排名明细：</strong><br>
         <div style="margin-top: 8px; line-height: 1.8;">${rankListHtml}</div>
-        ${remainingCardsHtml}
       </div>
     `;
 
