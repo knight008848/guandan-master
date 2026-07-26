@@ -337,13 +337,8 @@ function isSameSuit(cards: Card[]): boolean {
 /**
  * 判断5张牌是否能构成顺子，并返回最大权重
  */
-function getStraightMaxWeight(cards: Card[], currentRank: string): number {
-  if (
-    cards.some(
-      (c) =>
-        c.rank === 'red_joker' || c.rank === 'black_joker' || (c.rank === currentRank && !isWildCard(c, currentRank))
-    )
-  ) {
+function getStraightMaxWeight(cards: Card[], _currentRank: string): number {
+  if (cards.some((c) => c.rank === 'red_joker' || c.rank === 'black_joker')) {
     return 0;
   }
 
@@ -373,8 +368,8 @@ function getStraightMaxWeight(cards: Card[], currentRank: string): number {
 /**
  * 校验双顺或钢板的连续性
  */
-function getSequenceMaxWeight(ranks: string[], currentRank: string, _requiredLen: number): number {
-  if (ranks.some((r) => r === 'red_joker' || r === 'black_joker' || r === currentRank)) {
+function getSequenceMaxWeight(ranks: string[], _currentRank: string, _requiredLen: number): number {
+  if (ranks.some((r) => r === 'red_joker' || r === 'black_joker')) {
     return 0;
   }
 

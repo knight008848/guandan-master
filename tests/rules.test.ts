@@ -256,6 +256,28 @@ describe('Guandan Rules Unit Tests', () => {
       expect(canPlay(kingBomb, combo10, currentRank)).not.toBeNull();
       expect(canPlay(hand10, comboKing, currentRank)).toBeNull();
     });
+
+    it('should explicitly verify 9-card bomb power is 908 (between 8-card bomb 808 and 10-card bomb 1008)', () => {
+      const currentRank = '10';
+      // 8 natural 8s + 1 wildcard (Hearts 10)
+      const hand9: Card[] = [
+        { suit: 'S', rank: '8' },
+        { suit: 'S', rank: '8' },
+        { suit: 'D', rank: '8' },
+        { suit: 'D', rank: '8' },
+        { suit: 'C', rank: '8' },
+        { suit: 'C', rank: '8' },
+        { suit: 'H', rank: '8' },
+        { suit: 'H', rank: '8' },
+        { suit: 'H', rank: '10' }
+      ];
+
+      const combo9 = canPlay(hand9, null, currentRank)!;
+      expect(combo9).not.toBeNull();
+      expect(combo9.type).toBe(HAND_TYPES.BOMB);
+      expect(combo9.power).toBe(908);
+      expect(combo9.cardCount).toBe(9);
+    });
   });
 
   /* -------------------------------------------------------------------------- */
@@ -321,6 +343,18 @@ describe('Guandan Rules Unit Tests', () => {
       const combo = canPlay(mixedStraight, null, currentRank);
       expect(combo).not.toBeNull();
       expect(combo?.type).toBe(HAND_TYPES.STRAIGHT); // Single straight, NOT bomb/straight flush
+    });
+
+    it('should reject wrap-around straight flush like J-Q-K-A-2', () => {
+      const currentRank = '9';
+      const sfWrap: Card[] = [
+        { suit: 'S', rank: 'J' },
+        { suit: 'S', rank: 'Q' },
+        { suit: 'S', rank: 'K' },
+        { suit: 'S', rank: 'A' },
+        { suit: 'S', rank: '2' }
+      ];
+      expect(canPlay(sfWrap, null, currentRank)).toBeNull();
     });
   });
 
@@ -396,7 +430,7 @@ describe('Guandan Rules Unit Tests', () => {
       expect(canPlay(straightWithBlackJoker, null, currentRank)).toBeNull();
     });
 
-    it('should forbid hard level cards (硬主) from participating in single straight', () => {
+    it('should allow hard level cards (硬主) to participate in single straight', () => {
       const currentRank = '10'; // Level card is 10
       // Spades 10 is a hard level card
       const straightWithHard10: Card[] = [
@@ -407,7 +441,10 @@ describe('Guandan Rules Unit Tests', () => {
         { suit: 'H', rank: 'J' }
       ];
 
-      expect(canPlay(straightWithHard10, null, currentRank)).toBeNull();
+      const combo = canPlay(straightWithHard10, null, currentRank);
+      expect(combo).not.toBeNull();
+      expect(combo?.type).toBe(HAND_TYPES.STRAIGHT);
+      expect(combo?.power).toBe(11);
     });
 
     it('should reject wrap-around / cross-boundary straights like J-Q-K-A-2 or Q-K-A-2-3', () => {
@@ -499,7 +536,7 @@ describe('Guandan Rules Unit Tests', () => {
       expect(canPlay(ds4pairs, null, currentRank)).toBeNull();
     });
 
-    it('should forbid hard level cards (硬主) from participating in double straight', () => {
+    it('should allow hard level cards (硬主) to participate in double straight', () => {
       const currentRank = '10'; // 10 is hard level card
       const dsWithHard10: Card[] = [
         { suit: 'S', rank: '9' },
@@ -510,7 +547,23 @@ describe('Guandan Rules Unit Tests', () => {
         { suit: 'D', rank: 'J' }
       ];
 
-      expect(canPlay(dsWithHard10, null, currentRank)).toBeNull();
+      const combo = canPlay(dsWithHard10, null, currentRank);
+      expect(combo).not.toBeNull();
+      expect(combo?.type).toBe(HAND_TYPES.DOUBLE_STRAIGHT);
+      expect(combo?.power).toBe(11);
+    });
+
+    it('should reject wrap-around double straight like K-K-A-A-2-2', () => {
+      const currentRank = '9';
+      const dsWrap: Card[] = [
+        { suit: 'S', rank: 'K' },
+        { suit: 'D', rank: 'K' },
+        { suit: 'C', rank: 'A' },
+        { suit: 'H', rank: 'A' },
+        { suit: 'S', rank: '2' },
+        { suit: 'D', rank: '2' }
+      ];
+      expect(canPlay(dsWrap, null, currentRank)).toBeNull();
     });
   });
 
@@ -650,6 +703,111 @@ describe('Guandan Rules Unit Tests', () => {
       ];
 
       expect(canPlay(t333Jokers, null, currentRank)).toBeNull();
+    });
+
+    it('should reject three-with-two if attached cards are two unpaired singles like 333 + 4 + 5', () => {
+      const currentRank = '10';
+      const t3WithUnpaired: Card[] = [
+        { suit: 'S', rank: '3' },
+        { suit: 'D', rank: '3' },
+        { suit: 'C', rank: '3' },
+        { suit: 'H', rank: '4' },
+        { suit: 'S', rank: '5' }
+      ];
+
+      expect(canPlay(t3WithUnpaired, null, currentRank)).toBeNull();
+    });
+  });
+
+  /* -------------------------------------------------------------------------- */
+  /* Hard Rank Cards (非红桃级牌 / 硬主) Legal Combinations                     */
+  /* -------------------------------------------------------------------------- */
+  describe('Hard Rank Cards (硬主) Legal Combinations', () => {
+    it('A.1: Straight - 3-4-♠5(hard)-6-7 when playing 5 should be STRAIGHT Power 7; A-♠2(hard)-3-4-5 when playing 2 should be STRAIGHT Power 5', () => {
+      // 打 5 时，3-4-♠5(硬主)-6-7
+      const straight5: Card[] = [
+        { suit: 'S', rank: '3' },
+        { suit: 'D', rank: '4' },
+        { suit: 'S', rank: '5' },
+        { suit: 'C', rank: '6' },
+        { suit: 'H', rank: '7' }
+      ];
+      const combo5 = canPlay(straight5, null, '5');
+      expect(combo5).not.toBeNull();
+      expect(combo5?.type).toBe(HAND_TYPES.STRAIGHT);
+      expect(combo5?.power).toBe(7);
+
+      // 打 2 时，♠A-♠2(硬主)-3-4-5 (mixed suits so it is single straight)
+      const straight2: Card[] = [
+        { suit: 'S', rank: 'A' },
+        { suit: 'S', rank: '2' },
+        { suit: 'D', rank: '3' },
+        { suit: 'C', rank: '4' },
+        { suit: 'H', rank: '5' }
+      ];
+      const combo2 = canPlay(straight2, null, '2');
+      expect(combo2).not.toBeNull();
+      expect(combo2?.type).toBe(HAND_TYPES.STRAIGHT);
+      expect(combo2?.power).toBe(5);
+    });
+
+    it('A.2: Straight Flush - ♠3-♠4-♠5(hard)-♠6-♠7 when playing 5 should be BOMB Straight Flush Power 557', () => {
+      const sf5: Card[] = [
+        { suit: 'S', rank: '3' },
+        { suit: 'S', rank: '4' },
+        { suit: 'S', rank: '5' },
+        { suit: 'S', rank: '6' },
+        { suit: 'S', rank: '7' }
+      ];
+      const combo = canPlay(sf5, null, '5');
+      expect(combo).not.toBeNull();
+      expect(combo?.type).toBe(HAND_TYPES.BOMB);
+      expect(combo?.name).toBe('同花顺');
+      expect(combo?.power).toBe(557);
+    });
+
+    it('A.3: Double Straight - 33-44-♠5♢5(hard) when playing 5 should be DOUBLE_STRAIGHT Power 5', () => {
+      const ds5: Card[] = [
+        { suit: 'S', rank: '3' },
+        { suit: 'D', rank: '3' },
+        { suit: 'C', rank: '4' },
+        { suit: 'H', rank: '4' },
+        { suit: 'S', rank: '5' },
+        { suit: 'D', rank: '5' }
+      ];
+      const combo = canPlay(ds5, null, '5');
+      expect(combo).not.toBeNull();
+      expect(combo?.type).toBe(HAND_TYPES.DOUBLE_STRAIGHT);
+      expect(combo?.power).toBe(5);
+    });
+
+    it('A.4: Steel Plate - 444-♠5♢5♣5(hard) when playing 5 should be STEEL_PLATE Power 5', () => {
+      const sp5: Card[] = [
+        { suit: 'S', rank: '4' },
+        { suit: 'D', rank: '4' },
+        { suit: 'C', rank: '4' },
+        { suit: 'S', rank: '5' },
+        { suit: 'D', rank: '5' },
+        { suit: 'C', rank: '5' }
+      ];
+      const combo = canPlay(sp5, null, '5');
+      expect(combo).not.toBeNull();
+      expect(combo?.type).toBe(HAND_TYPES.STEEL_PLATE);
+      expect(combo?.power).toBe(5);
+    });
+
+    it('A.5: Three with Pair - ♠5♢5♣5(hard)+33 when playing 5 should be THREE_TWO Power 15', () => {
+      const t2_5: Card[] = [
+        { suit: 'S', rank: '5' },
+        { suit: 'D', rank: '5' },
+        { suit: 'C', rank: '5' },
+        { suit: 'S', rank: '3' },
+        { suit: 'D', rank: '3' }
+      ];
+      const combo = canPlay(t2_5, null, '5');
+      expect(combo).not.toBeNull();
+      expect(combo?.type).toBe(HAND_TYPES.THREE_TWO);
+      expect(combo?.power).toBe(15);
     });
   });
 
