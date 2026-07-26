@@ -887,10 +887,21 @@ export class DOMRenderer {
     panel?.classList.toggle('show');
   }
 
+  private static readonly MAX_LOG_LINES = 1000;
+
   // 向日志面板写入单条记录
   private addGameLog(msg: string, type: 'info' | 'tribute' | 'round-end' = 'info') {
     const container = document.getElementById('log-content-list');
     if (container) {
+      // 保持日志容量上限为 1000 行，多余时移除最早的日志节点，防止 DOM 内存泄漏
+      while (container.children.length >= DOMRenderer.MAX_LOG_LINES) {
+        if (container.firstChild) {
+          container.removeChild(container.firstChild);
+        } else {
+          break;
+        }
+      }
+
       const item = document.createElement('div');
       item.className = `log-item ${type}`;
 
