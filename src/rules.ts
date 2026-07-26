@@ -386,7 +386,7 @@ function getSequenceMaxWeight(ranks: string[], _currentRank: string, _requiredLe
     return vals[vals.length - 1];
   }
 
-  if (faceValues.includes(14) && vals.length >= 3) {
+  if (faceValues.includes(14) && vals.length >= 2) {
     const altVals = faceValues.map((v) => (v === 14 ? 1 : v)).sort((a, b) => a - b);
     if (isConsecutive(altVals)) {
       return altVals[altVals.length - 1];

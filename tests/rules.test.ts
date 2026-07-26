@@ -628,7 +628,7 @@ describe('Guandan Rules Unit Tests', () => {
       expect(canPlay(sp3triples, null, currentRank)).toBeNull();
     });
 
-    it('should reject cross-boundary AAA 222 steel plate', () => {
+    it('should ACCEPT A-2 steel plate (AAA 222) as valid steel plate with A acting as 1 (power 3)', () => {
       const currentRank = '10';
       const spAAA222: Card[] = [
         { suit: 'S', rank: 'A' },
@@ -639,7 +639,10 @@ describe('Guandan Rules Unit Tests', () => {
         { suit: 'D', rank: '2' }
       ];
 
-      expect(canPlay(spAAA222, null, currentRank)).toBeNull();
+      const comboAAA222 = canPlay(spAAA222, null, currentRank)!;
+      expect(comboAAA222).not.toBeNull();
+      expect(comboAAA222.type).toBe(HAND_TYPES.STEEL_PLATE);
+      expect(comboAAA222.power).toBe(2);
     });
   });
 
