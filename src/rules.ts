@@ -59,6 +59,8 @@ export function getCardWeight(rank: string, currentRank: string): number {
  * 判断是否为逢人配（红心主牌）
  */
 export function isWildCard(card: Card, currentRank: string): boolean {
+  if (card.isSubstituted) return true;
+  if (card.original && card.original.suit === SUITS.HEARTS && card.original.rank === currentRank) return true;
   return card.suit === SUITS.HEARTS && card.rank === currentRank;
 }
 
@@ -337,7 +339,10 @@ function isSameSuit(cards: Card[]): boolean {
  */
 function getStraightMaxWeight(cards: Card[], currentRank: string): number {
   if (
-    cards.some((c) => c.rank === 'red_joker' || c.rank === 'black_joker' || (c.rank === currentRank && c.suit !== 'H'))
+    cards.some(
+      (c) =>
+        c.rank === 'red_joker' || c.rank === 'black_joker' || (c.rank === currentRank && !isWildCard(c, currentRank))
+    )
   ) {
     return 0;
   }

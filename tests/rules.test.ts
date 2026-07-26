@@ -42,6 +42,16 @@ describe('Guandan Rules Unit Tests', () => {
       const heartsNine: Card = { suit: 'H', rank: '9' };
       expect(isWildCard(heartsNine, '10')).toBe(false);
     });
+
+    it('should identify substituted wild card as wild card even if suit is changed', () => {
+      const substitutedCard: Card = {
+        suit: 'S',
+        rank: '2',
+        isSubstituted: true,
+        original: { suit: 'H', rank: '2' }
+      };
+      expect(isWildCard(substitutedCard, '2')).toBe(true);
+    });
   });
 
   describe('sortCards', () => {
@@ -268,6 +278,23 @@ describe('Guandan Rules Unit Tests', () => {
       expect(result?.name).toBe('同花顺');
       expect(result?.power).toBeGreaterThanOrEqual(557);
       expect(result?.power).toBeLessThanOrEqual(564);
+    });
+
+    it('should detect straight flush when wild card substitutes level card rank (e.g. Heart 2 as Spade 2 in Spade A-2-3-4-5)', () => {
+      // currentRank = '2'
+      // Hand: Spades A, Spades 3, Spades 4, Spades 5, Hearts 2 (wild card -> Spades 2, forming Spade A-2-3-4-5 straight flush)
+      const cards: Card[] = [
+        { suit: 'S', rank: 'A' },
+        { suit: 'S', rank: '3' },
+        { suit: 'S', rank: '4' },
+        { suit: 'S', rank: '5' },
+        { suit: 'H', rank: '2' } // Wild card substituting Spade 2
+      ];
+      const result = canPlay(cards, null, '2');
+      expect(result).not.toBeNull();
+      expect(result?.type).toBe(HAND_TYPES.BOMB);
+      expect(result?.name).toBe('同花顺');
+      expect(result?.power).toBeGreaterThan(550);
     });
 
     it('should forbid hard level cards (硬主) from participating in straight, double straight, and steel plate', () => {
