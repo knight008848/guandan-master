@@ -53,40 +53,26 @@ export function calculateHandCount(hand: Card[], currentRank: string): number {
 
     // 贪心消费组合，优先消费牌型长、权重高的组合
     if (groups.bombs.length > 0) {
-      // 消费炸弹
-      removeCards(remaining, groups.bombs[0]);
-      handsCount++;
-      changed = true;
+      changed = removeCards(remaining, groups.bombs[0]);
+      if (changed) handsCount++;
     } else if (groups.steelPlates.length > 0) {
-      // 消费钢板
-      removeCards(remaining, groups.steelPlates[0]);
-      handsCount++;
-      changed = true;
+      changed = removeCards(remaining, groups.steelPlates[0]);
+      if (changed) handsCount++;
     } else if (groups.doubleStraights.length > 0) {
-      // 消费双顺
-      removeCards(remaining, groups.doubleStraights[0]);
-      handsCount++;
-      changed = true;
+      changed = removeCards(remaining, groups.doubleStraights[0]);
+      if (changed) handsCount++;
     } else if (groups.straights.length > 0) {
-      // 消费单顺
-      removeCards(remaining, groups.straights[0]);
-      handsCount++;
-      changed = true;
+      changed = removeCards(remaining, groups.straights[0]);
+      if (changed) handsCount++;
     } else if (groups.threeTwos.length > 0) {
-      // 消费三带二
-      removeCards(remaining, groups.threeTwos[0]);
-      handsCount++;
-      changed = true;
+      changed = removeCards(remaining, groups.threeTwos[0]);
+      if (changed) handsCount++;
     } else if (groups.triples.length > 0) {
-      // 消费三条
-      removeCards(remaining, groups.triples[0]);
-      handsCount++;
-      changed = true;
+      changed = removeCards(remaining, groups.triples[0]);
+      if (changed) handsCount++;
     } else if (groups.pairs.length > 0) {
-      // 消费对子
-      removeCards(remaining, groups.pairs[0]);
-      handsCount++;
-      changed = true;
+      changed = removeCards(remaining, groups.pairs[0]);
+      if (changed) handsCount++;
     }
   }
 
@@ -120,11 +106,15 @@ export function evaluateHand(
 /**
  * 辅助方法：从手牌数组中删除指定的卡牌
  */
-function removeCards(hand: Card[], cardsToRemove: Card[]) {
+function removeCards(hand: Card[], cardsToRemove: Card[]): boolean {
+  let removed = false;
   cardsToRemove.forEach((card) => {
-    const idx = hand.findIndex((c) => c.suit === card.suit && c.rank === card.rank);
+    const target = card.original || card;
+    const idx = hand.findIndex((c) => c.suit === target.suit && c.rank === target.rank);
     if (idx !== -1) {
       hand.splice(idx, 1);
+      removed = true;
     }
   });
+  return removed;
 }

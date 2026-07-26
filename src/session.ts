@@ -120,27 +120,31 @@ export class GameSession extends EventEmitter {
     if (this.phase === 'TRIBUTE' && this.tributeInfo) {
       const info = this.tributeInfo;
       if (info.status === 'WAITING_TRIBUTE') {
-        const payer = info.payers[info.index];
-        if (payer === 0) {
-          const eligible = this.playerHands[0].filter((c) => !isWildCard(c, this.currentRank));
-          const sorted = sortCards(eligible, this.currentRank);
-          const card = sorted[0];
-          if (card) {
-            this.emit('tribute_finished'); // 隐藏进贡UI
-            this.executeTribute(0, info.receivers[info.index], card);
+        if (info.index >= 0 && info.index < info.payers.length && info.index < info.receivers.length) {
+          const payer = info.payers[info.index];
+          if (payer === 0) {
+            const eligible = this.playerHands[0].filter((c) => !isWildCard(c, this.currentRank));
+            const sorted = sortCards(eligible, this.currentRank);
+            const card = sorted[0];
+            if (card) {
+              this.emit('tribute_finished'); // 隐藏进贡UI
+              this.executeTribute(0, info.receivers[info.index], card);
+            }
           }
         }
       } else if (info.status === 'WAITING_RETURN') {
-        const receiver = info.receivers[info.index];
-        if (receiver === 0) {
-          const eligible = this.playerHands[0].filter((c) => {
-            return getCardWeight(c.rank, this.currentRank) <= 10 && !isWildCard(c, this.currentRank);
-          });
-          const sorted = sortCards(eligible.length > 0 ? eligible : this.playerHands[0], this.currentRank);
-          const card = sorted[sorted.length - 1]; // 选最小的退还
-          if (card) {
-            this.emit('tribute_finished'); // 隐藏进贡UI
-            this.executeReturn(0, info.payers[info.index], card);
+        if (info.index >= 0 && info.index < info.receivers.length && info.index < info.payers.length) {
+          const receiver = info.receivers[info.index];
+          if (receiver === 0) {
+            const eligible = this.playerHands[0].filter((c) => {
+              return getCardWeight(c.rank, this.currentRank) <= 10 && !isWildCard(c, this.currentRank);
+            });
+            const sorted = sortCards(eligible.length > 0 ? eligible : this.playerHands[0], this.currentRank);
+            const card = sorted[sorted.length - 1]; // 选最小的退还
+            if (card) {
+              this.emit('tribute_finished'); // 隐藏进贡UI
+              this.executeReturn(0, info.payers[info.index], card);
+            }
           }
         }
       }
@@ -261,7 +265,7 @@ export class GameSession extends EventEmitter {
     const info = this.tributeInfo;
     if (!info) return;
 
-    if (info.index >= info.payers.length) {
+    if (info.index < 0 || info.index >= info.payers.length || info.index >= info.receivers.length) {
       info.status = 'WAITING_RETURN';
       info.index = 0;
       this.processNextReturn();
@@ -301,7 +305,9 @@ export class GameSession extends EventEmitter {
       const eligible = this.playerHands[payer].filter((c) => !isWildCard(c, this.currentRank));
       const sorted = sortCards(eligible, this.currentRank);
       const card = sorted[0];
-      this.executeTribute(payer, receiver, card);
+      if (card) {
+        this.executeTribute(payer, receiver, card);
+      }
     }
   }
 
@@ -314,6 +320,7 @@ export class GameSession extends EventEmitter {
     if (!info) return;
 
     if (info.status === 'WAITING_TRIBUTE') {
+      if (info.index < 0 || info.index >= info.payers.length || info.index >= info.receivers.length) return;
       const payer = info.payers[info.index];
       const receiver = info.receivers[info.index];
 
@@ -332,6 +339,7 @@ export class GameSession extends EventEmitter {
 
       this.executeTribute(payer, receiver, card);
     } else {
+      if (info.index < 0 || info.index >= info.receivers.length || info.index >= info.payers.length) return;
       const receiver = info.receivers[info.index];
       const payer = info.payers[info.index];
 
@@ -347,10 +355,12 @@ export class GameSession extends EventEmitter {
           }
         } else {
           const sortedHand = sortCards(this.playerHands[0], this.currentRank);
-          const minWeight = getCardWeight(sortedHand[sortedHand.length - 1].rank, this.currentRank);
-          if (getCardWeight(card.rank, this.currentRank) !== minWeight) {
-            this.emit('toast', '退贡牌不符合规则，在没有 ≤10 牌的情况下，必须退还手上最小的牌！');
-            return;
+          if (sortedHand.length > 0) {
+            const minWeight = getCardWeight(sortedHand[sortedHand.length - 1].rank, this.currentRank);
+            if (getCardWeight(card.rank, this.currentRank) !== minWeight) {
+              this.emit('toast', '退贡牌不符合规则，在没有 ≤10 牌的情况下，必须退还手上最小的牌！');
+              return;
+            }
           }
         }
       }
@@ -360,6 +370,7 @@ export class GameSession extends EventEmitter {
   }
 
   private executeTribute(payer: number, receiver: number, card: Card) {
+    if (!card) return;
     this.removeCard(payer, card);
     this.playerHands[receiver].push(card);
     this.playerHands[receiver] = sortCards(this.playerHands[receiver], this.currentRank);
@@ -379,7 +390,7 @@ export class GameSession extends EventEmitter {
     const info = this.tributeInfo;
     if (!info) return;
 
-    if (info.index >= info.receivers.length) {
+    if (info.index < 0 || info.index >= info.receivers.length || info.index >= info.payers.length) {
       this.endTributePhase();
       return;
     }
@@ -397,8 +408,10 @@ export class GameSession extends EventEmitter {
       } else {
         // 如果没有 <= 10 的牌，必须还最小的牌（多张同点数可选不同花色）
         const sortedHand = sortCards(this.playerHands[0], this.currentRank);
-        const minWeight = getCardWeight(sortedHand[sortedHand.length - 1].rank, this.currentRank);
-        choices = sortedHand.filter((c) => getCardWeight(c.rank, this.currentRank) === minWeight);
+        if (sortedHand.length > 0) {
+          const minWeight = getCardWeight(sortedHand[sortedHand.length - 1].rank, this.currentRank);
+          choices = sortedHand.filter((c) => getCardWeight(c.rank, this.currentRank) === minWeight);
+        }
       }
       this.emit('return_required', `请退还一张卡牌给 ${this.players[payer].name}（需≤10）：`, choices);
     } else {
@@ -539,12 +552,21 @@ export class GameSession extends EventEmitter {
       this.passCount = 0;
       this.emit('trick_ended', this.currentWinnerIndex);
 
-      // 接风判定：如果当前赢家已经出完，首发权给他的队友
+      // 接风判定：如果当前赢家已经出完，校验队友手牌是否大于0；若无，顺延给下家
       if (this.playerHands[this.currentWinnerIndex].length === 0) {
         const partner = (this.currentWinnerIndex + 2) % 4;
-        this.currentPlayer = partner;
-        this.currentWinnerIndex = partner;
-        this.emit('toast', `出牌赢家已出完手牌，由队友接风首发！`);
+        if (this.playerHands[partner].length > 0) {
+          this.currentPlayer = partner;
+          this.currentWinnerIndex = partner;
+          this.emit('toast', `出牌赢家已出完手牌，由队友接风首发！`);
+        } else {
+          let nextP = (this.currentWinnerIndex + 1) % 4;
+          while (this.playerHands[nextP].length === 0) {
+            nextP = (nextP + 1) % 4;
+          }
+          this.currentPlayer = nextP;
+          this.currentWinnerIndex = nextP;
+        }
       } else {
         this.currentPlayer = this.currentWinnerIndex;
       }

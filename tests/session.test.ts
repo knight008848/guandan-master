@@ -601,4 +601,88 @@ describe('GameSession Integration and Flow Tests', () => {
       expect(session.remainingCardsLogs).toEqual([]);
     });
   });
+
+  describe('Wind-Following (接风校验) & Tribute Bounds Protection (进退贡越界保护)', () => {
+    it('should grant lead to partner when winner has 0 cards and partner has >0 cards', () => {
+      const session = new GameSession();
+      session.phase = 'PLAYING';
+      session.currentWinnerIndex = 0; // Player 0 played winning cards
+      session.playerHands = [
+        [], // Player 0 finished (0 cards)
+        [{ suit: 'S', rank: '5' }], // Player 1 (opponent 1)
+        [{ suit: 'S', rank: '9' }], // Player 2 (partner, >0 cards)
+        [{ suit: 'S', rank: 'J' }] // Player 3 (opponent 2)
+      ];
+      session.lastPlay = { type: 'SINGLE', power: 14, cardCount: 1, playerIndex: 0 };
+      session.currentPlayer = 0;
+
+      // Pass 3 times (Player 1 passes, Player 2 passes, Player 3 passes)
+      session.passTurn(); // currentPlayer was 0 -> moves to 1, passCount=1
+      session.passTurn(); // moves to 2, passCount=2
+      session.passTurn(); // moves to 3, passCount=3 -> triggers trick_ended and wind-following
+
+      // Partner (Player 2) has cards left, so partner gets lead
+      expect(session.currentPlayer).toBe(2);
+      expect(session.currentWinnerIndex).toBe(2);
+    });
+
+    it('should grant lead to next active opponent when winner has 0 cards and partner ALSO has 0 cards', () => {
+      const session = new GameSession();
+      session.phase = 'PLAYING';
+      session.currentWinnerIndex = 0; // Player 0 played winning cards
+      session.playerHands = [
+        [], // Player 0 finished (0 cards)
+        [{ suit: 'S', rank: '5' }], // Player 1 (opponent 1, >0 cards)
+        [], // Player 2 (partner, ALSO 0 cards)
+        [{ suit: 'S', rank: 'J' }] // Player 3 (opponent 2)
+      ];
+      session.lastPlay = { type: 'SINGLE', power: 14, cardCount: 1, playerIndex: 0 };
+      session.currentPlayer = 0;
+
+      // Pass turns until 3 passes happen
+      session.passTurn(); // Player 1 passes
+      session.passTurn(); // Player 3 passes
+      session.passTurn(); // 3rd pass triggers trick_ended
+
+      // Since partner (Player 2) has 0 cards, lead goes to Player 1 (next active opponent)
+      expect(session.currentPlayer).toBe(1);
+      expect(session.currentWinnerIndex).toBe(1);
+    });
+
+    it('should safely protect against out-of-bounds index in tribute and return phase', () => {
+      const session = new GameSession();
+      session.phase = 'TRIBUTE';
+      session.tributeInfo = {
+        payers: [3],
+        receivers: [0],
+        isDouble: false,
+        paidCards: [],
+        status: 'WAITING_TRIBUTE',
+        index: 999 // Out of bounds index
+      };
+
+      // Calling processNextTribute with out of bounds index should transition to WAITING_RETURN without crashing
+      (session as any).processNextTribute();
+      expect(session.tributeInfo.status).toBe('WAITING_RETURN');
+      expect(session.tributeInfo.index).toBe(0);
+
+      // Now set index out of bounds for return
+      session.tributeInfo.index = 999;
+      (session as any).processNextReturn();
+      // Should end tribute phase without crashing
+      expect(session.phase).toBe('PLAYING');
+
+      // Test submitTributeCard out of bounds
+      session.phase = 'TRIBUTE';
+      session.tributeInfo = {
+        payers: [3],
+        receivers: [0],
+        isDouble: false,
+        paidCards: [],
+        status: 'WAITING_TRIBUTE',
+        index: -1 // Out of bounds negative index
+      };
+      expect(() => session.submitTributeCard({ suit: 'S', rank: 'A' })).not.toThrow();
+    });
+  });
 });

@@ -46,6 +46,19 @@ describe('Guandan AI Heuristic Evaluator Unit Tests', () => {
     it('should handle empty hand', () => {
       expect(calculateHandCount([], '2')).toBe(0);
     });
+
+    it('should not get stuck in an infinite loop when cards contain wildcards/substituted cards', () => {
+      const hand: Card[] = [
+        { suit: 'H', rank: '2' }, // Wildcard when currentRank is '2'
+        { suit: 'S', rank: '3' },
+        { suit: 'D', rank: '4' },
+        { suit: 'C', rank: '5' },
+        { suit: 'S', rank: '6' }
+      ];
+      // Should correctly calculate hand count without infinite loop
+      const count = calculateHandCount(hand, '2');
+      expect(count).toBe(1); // 3-4-5-6 + H2(substituted as 7 or 2) -> 1 straight
+    });
   });
 
   describe('evaluateHand', () => {
