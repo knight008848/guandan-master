@@ -12,11 +12,15 @@ import { extractCardGroups } from './ai_grouper';
 export function heuristicChoosePlay(view: PlayerStateView): Card[] | null {
   const { hand, lastPlay, currentRank, myIndex, currentWinnerIndex } = view;
 
-  // 1. 如果队友是当前赢家，且上家出的不是非常小的牌，选择过牌接风
+  // 1. 如果队友是当前赢家：
+  // - 若队友打出的是炸弹 (HAND_TYPES.BOMB)，无条件过牌让风，绝不轰炸队友
+  // - 若队友打出的是普通牌型且点数较大 (power >= 10)，选择过牌接风
   if (lastPlay && lastPlay.type !== HAND_TYPES.INVALID) {
     const isTeammateWinner = (myIndex + 2) % 4 === currentWinnerIndex;
-    if (isTeammateWinner && lastPlay.power >= 10) {
-      return null;
+    if (isTeammateWinner) {
+      if (lastPlay.type === HAND_TYPES.BOMB || lastPlay.power >= 10) {
+        return null;
+      }
     }
   }
 
@@ -110,19 +114,28 @@ export function heuristicFollowPlay(
       .map((c) => [c])
       .filter((play) => getCardWeight(play[0].rank, currentRank) > targetPower);
 
-    // 只有在没有可用原生单张，且手牌 <= 4 张（残局冲刺阶段）时，才允许拆对子跟牌
-    if (candidates.length === 0 && hand.length <= 4) {
+    // 当没有可用原生单张时，允许满足以下条件之一拆对子出单牌提案（交由 Auditor 评分）
+    // 1. 残局/中后期 (手牌 <= 12)
+    // 2. 所出牌为大牌 (权值 >= 12)，争夺牌权
+    // 3. 被拆对子本身是小对子 (权值 <= 8)
+    if (candidates.length === 0) {
       candidates = groups.pairs
         .map((p) => [p[0]])
-        .filter((play) => getCardWeight(play[0].rank, currentRank) > targetPower);
+        .filter((play) => {
+          const w = getCardWeight(play[0].rank, currentRank);
+          return w > targetPower && (hand.length <= 12 || w >= 12 || w <= 8);
+        });
     }
   } else if (targetType === HAND_TYPES.PAIR) {
     candidates = groups.pairs.filter((p) => getCardWeight(p[0].rank, currentRank) > targetPower);
-    // 只有在手牌 <= 4 张且无纯对子时，才允许拆三张当作对子打出
-    if (candidates.length === 0 && hand.length <= 4) {
+    // 当无纯对子时，允许在残局 (手牌 <= 10) 或出大牌 (权值 >= 12) 时拆三张当作对子打出
+    if (candidates.length === 0) {
       candidates = groups.triples
         .map((t) => [t[0], t[1]])
-        .filter((p) => getCardWeight(p[0].rank, currentRank) > targetPower);
+        .filter((p) => {
+          const w = getCardWeight(p[0].rank, currentRank);
+          return w > targetPower && (hand.length <= 10 || w >= 12);
+        });
     }
   } else if (targetType === HAND_TYPES.THREE) {
     candidates = groups.triples.filter((t) => getCardWeight(t[0].rank, currentRank) > targetPower);

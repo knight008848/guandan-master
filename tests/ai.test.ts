@@ -100,6 +100,30 @@ describe('Guandan AI Unit Tests', () => {
       expect(play).toBeNull(); // Should choose to pass and let teammate win
     });
 
+    it('should NOT bomb teammate small bomb when teammate is currently winning', () => {
+      const view: PlayerStateView = {
+        hand: [
+          { suit: 'S', rank: '5' },
+          { suit: 'D', rank: '5' },
+          { suit: 'C', rank: '5' },
+          { suit: 'H', rank: '5' } // Bomb of 5s
+        ],
+        lastPlay: {
+          type: HAND_TYPES.BOMB,
+          power: 3, // Teammate played small bomb of 3s (power = 3)
+          cardCount: 4,
+          playerIndex: 2 // Teammate
+        },
+        currentRank: '2',
+        myIndex: 0,
+        currentWinnerIndex: 2, // Teammate is winning!
+        opponentCardCounts: [15, 10, 15, 10]
+      };
+
+      const play = aiChoosePlay(view);
+      expect(play).toBeNull(); // Should pass, NOT bomb teammate's small bomb
+    });
+
     it('should follow with the smallest card that beats target', () => {
       const hand: Card[] = [
         { suit: 'S', rank: '5' }, // weight 5
