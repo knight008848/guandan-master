@@ -89,18 +89,11 @@ describe('Guandan Rules Unit Tests', () => {
       expect(result.power).toBe(13);
     });
 
-    it('should evaluate Joker pairs with correct power hierarchy (Double Red Joker: 18 > Red+Black: 17 > Double Black Joker: 16)', () => {
+    it('should evaluate Joker pairs correctly (Double Red: 18, Double Black: 16, Red+Black: INVALID)', () => {
       const doubleRed = evaluateNormalHand(
         [
           { suit: 'J', rank: 'red_joker' },
           { suit: 'J', rank: 'red_joker' }
-        ],
-        '2'
-      );
-      const redBlack = evaluateNormalHand(
-        [
-          { suit: 'J', rank: 'red_joker' },
-          { suit: 'J', rank: 'black_joker' }
         ],
         '2'
       );
@@ -111,17 +104,23 @@ describe('Guandan Rules Unit Tests', () => {
         ],
         '2'
       );
+      const redBlack = evaluateNormalHand(
+        [
+          { suit: 'J', rank: 'red_joker' },
+          { suit: 'J', rank: 'black_joker' }
+        ],
+        '2'
+      );
 
       expect(doubleRed.type).toBe(HAND_TYPES.PAIR);
       expect(doubleRed.power).toBe(18);
 
-      expect(redBlack.type).toBe(HAND_TYPES.PAIR);
-      expect(redBlack.power).toBe(17);
-
       expect(doubleBlack.type).toBe(HAND_TYPES.PAIR);
       expect(doubleBlack.power).toBe(16);
 
-      // Verify canPlay: Double Red Joker beats Red+Black Joker
+      expect(redBlack.type).toBe(HAND_TYPES.INVALID);
+
+      // Verify canPlay: Red+Black is INVALID and returns null
       const comboRedBlack = canPlay(
         [
           { suit: 'J', rank: 'red_joker' },
@@ -129,17 +128,8 @@ describe('Guandan Rules Unit Tests', () => {
         ],
         null,
         '2'
-      )!;
-      const doubleRedPlay = canPlay(
-        [
-          { suit: 'J', rank: 'red_joker' },
-          { suit: 'J', rank: 'red_joker' }
-        ],
-        comboRedBlack,
-        '2'
       );
-      expect(doubleRedPlay).not.toBeNull();
-      expect(doubleRedPlay?.power).toBe(18);
+      expect(comboRedBlack).toBeNull();
     });
 
     it('should detect BOMB', () => {

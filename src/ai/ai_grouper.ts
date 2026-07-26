@@ -247,11 +247,13 @@ export function extractCardGroups(hand: Card[], currentRank: string): CardGroups
     jokers.forEach((j) => {
       allSingles.push(j);
     });
-    if (jokers.length >= 2) {
-      const sortedJokers = [...jokers].sort(
-        (a, b) => getCardWeight(b.rank, currentRank) - getCardWeight(a.rank, currentRank)
-      );
-      allPairs.push([sortedJokers[0], sortedJokers[1]]);
+    const redJokers = jokers.filter((c) => c.rank === 'red_joker');
+    const blackJokers = jokers.filter((c) => c.rank === 'black_joker');
+    if (redJokers.length >= 2) {
+      allPairs.push([redJokers[0], redJokers[1]]);
+    }
+    if (blackJokers.length >= 2) {
+      allPairs.push([blackJokers[0], blackJokers[1]]);
     }
   }
 

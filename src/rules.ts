@@ -129,15 +129,22 @@ export function evaluateNormalHand(cards: Card[], currentRank: string): Combo {
   if (len === 2) {
     if (cards.every((c) => c.rank === 'red_joker' || c.rank === 'black_joker')) {
       const redCount = cards.filter((c) => c.rank === 'red_joker').length;
-      let power = 16;
-      if (redCount === 2) power = 18;
-      else if (redCount === 1) power = 17;
-      else power = 16;
-      return {
-        type: HAND_TYPES.PAIR,
-        power,
-        cardCount: 2
-      };
+      const blackCount = cards.filter((c) => c.rank === 'black_joker').length;
+      if (redCount === 2) {
+        return {
+          type: HAND_TYPES.PAIR,
+          power: 18,
+          cardCount: 2
+        };
+      }
+      if (blackCount === 2) {
+        return {
+          type: HAND_TYPES.PAIR,
+          power: 16,
+          cardCount: 2
+        };
+      }
+      return { type: HAND_TYPES.INVALID, power: 0, cardCount: 0 };
     }
     if (maxCount === 2) {
       return {

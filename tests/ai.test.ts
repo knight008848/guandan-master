@@ -166,21 +166,38 @@ describe('Guandan AI Unit Tests', () => {
       expect(play?.[0].rank).toBe('A');
     });
 
-    it('should extract pair of jokers when player has 2 jokers (less than 4)', () => {
-      const hand: Card[] = [
+    it('should extract pair of jokers only when player has 2 identical jokers (2 red jokers or 2 black jokers)', () => {
+      const handRedBlack: Card[] = [
         { suit: 'J', rank: 'red_joker' },
         { suit: 'J', rank: 'black_joker' },
         { suit: 'S', rank: '5' }
       ];
 
-      const groups = extractCardGroups(hand, '2');
-      // Should have 1 pair of jokers
-      expect(groups.pairs.length).toBe(1);
-      expect(groups.pairs[0].length).toBe(2);
-      expect(groups.pairs[0].some((c) => c.rank === 'red_joker')).toBe(true);
-      expect(groups.pairs[0].some((c) => c.rank === 'black_joker')).toBe(true);
-      // No 4-joker sky bomb
-      expect(groups.bombs.length).toBe(0);
+      const groupsRedBlack = extractCardGroups(handRedBlack, '2');
+      // 1 red + 1 black should NOT form a pair
+      expect(groupsRedBlack.pairs.length).toBe(0);
+      expect(groupsRedBlack.singles.some((c) => c.rank === 'red_joker')).toBe(true);
+      expect(groupsRedBlack.singles.some((c) => c.rank === 'black_joker')).toBe(true);
+
+      const handDoubleRed: Card[] = [
+        { suit: 'J', rank: 'red_joker' },
+        { suit: 'J', rank: 'red_joker' },
+        { suit: 'S', rank: '5' }
+      ];
+      const groupsDoubleRed = extractCardGroups(handDoubleRed, '2');
+      expect(groupsDoubleRed.pairs.length).toBe(1);
+      expect(groupsDoubleRed.pairs[0].length).toBe(2);
+      expect(groupsDoubleRed.pairs[0].every((c) => c.rank === 'red_joker')).toBe(true);
+
+      const handDoubleBlack: Card[] = [
+        { suit: 'J', rank: 'black_joker' },
+        { suit: 'J', rank: 'black_joker' },
+        { suit: 'S', rank: '5' }
+      ];
+      const groupsDoubleBlack = extractCardGroups(handDoubleBlack, '2');
+      expect(groupsDoubleBlack.pairs.length).toBe(1);
+      expect(groupsDoubleBlack.pairs[0].length).toBe(2);
+      expect(groupsDoubleBlack.pairs[0].every((c) => c.rank === 'black_joker')).toBe(true);
     });
 
     it('should play single Joker in a timely manner to gain control against high opponent card', () => {
@@ -214,7 +231,7 @@ describe('Guandan AI Unit Tests', () => {
           { suit: 'S', rank: '5' },
           { suit: 'D', rank: '5' },
           { suit: 'J', rank: 'red_joker' },
-          { suit: 'J', rank: 'black_joker' }
+          { suit: 'J', rank: 'red_joker' }
         ],
         lastPlay: {
           type: HAND_TYPES.PAIR,
@@ -231,8 +248,7 @@ describe('Guandan AI Unit Tests', () => {
       const play = aiChoosePlay(view);
       expect(play).not.toBeNull();
       expect(play?.length).toBe(2);
-      expect(play?.some((c) => c.rank === 'red_joker')).toBe(true);
-      expect(play?.some((c) => c.rank === 'black_joker')).toBe(true);
+      expect(play?.every((c) => c.rank === 'red_joker')).toBe(true);
     });
 
     it('should preserve King Bomb (4 Jokers) when opponent plays small cards, and use it against big bomb', () => {
