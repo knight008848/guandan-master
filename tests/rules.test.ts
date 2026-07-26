@@ -1,6 +1,15 @@
 import { describe, it, expect } from 'vitest';
 import { Card } from '../src/types';
-import { getCardWeight, isWildCard, sortCards, evaluateNormalHand, canPlay, HAND_TYPES, formatCard, formatHand } from '../src/rules';
+import {
+  getCardWeight,
+  isWildCard,
+  sortCards,
+  evaluateNormalHand,
+  canPlay,
+  HAND_TYPES,
+  formatCard,
+  formatHand
+} from '../src/rules';
 
 describe('Guandan Rules Unit Tests', () => {
   describe('getCardWeight', () => {
@@ -80,17 +89,57 @@ describe('Guandan Rules Unit Tests', () => {
       expect(result.power).toBe(13);
     });
 
-    it('should detect PAIR of Jokers (red_joker + black_joker)', () => {
-      const result = evaluateNormalHand(
+    it('should evaluate Joker pairs with correct power hierarchy (Double Red Joker: 18 > Red+Black: 17 > Double Black Joker: 16)', () => {
+      const doubleRed = evaluateNormalHand(
+        [
+          { suit: 'J', rank: 'red_joker' },
+          { suit: 'J', rank: 'red_joker' }
+        ],
+        '2'
+      );
+      const redBlack = evaluateNormalHand(
         [
           { suit: 'J', rank: 'red_joker' },
           { suit: 'J', rank: 'black_joker' }
         ],
         '2'
       );
-      expect(result.type).toBe(HAND_TYPES.PAIR);
-      expect(result.power).toBe(17);
-      expect(result.cardCount).toBe(2);
+      const doubleBlack = evaluateNormalHand(
+        [
+          { suit: 'J', rank: 'black_joker' },
+          { suit: 'J', rank: 'black_joker' }
+        ],
+        '2'
+      );
+
+      expect(doubleRed.type).toBe(HAND_TYPES.PAIR);
+      expect(doubleRed.power).toBe(18);
+
+      expect(redBlack.type).toBe(HAND_TYPES.PAIR);
+      expect(redBlack.power).toBe(17);
+
+      expect(doubleBlack.type).toBe(HAND_TYPES.PAIR);
+      expect(doubleBlack.power).toBe(16);
+
+      // Verify canPlay: Double Red Joker beats Red+Black Joker
+      const comboRedBlack = canPlay(
+        [
+          { suit: 'J', rank: 'red_joker' },
+          { suit: 'J', rank: 'black_joker' }
+        ],
+        null,
+        '2'
+      )!;
+      const doubleRedPlay = canPlay(
+        [
+          { suit: 'J', rank: 'red_joker' },
+          { suit: 'J', rank: 'red_joker' }
+        ],
+        comboRedBlack,
+        '2'
+      );
+      expect(doubleRedPlay).not.toBeNull();
+      expect(doubleRedPlay?.power).toBe(18);
     });
 
     it('should detect BOMB', () => {
@@ -212,20 +261,49 @@ describe('Guandan Rules Unit Tests', () => {
       expect(result?.name).toBe('同花顺');
     });
 
-    it('should allow normal level cards to be included in a straight', () => {
-      // currentRank = '8'
-      // Hand: Spades 5, Diamonds 6, Clubs 7, Spades 8 (normal 8), Spades 9 (mixed suits)
-      const cards: Card[] = [
+    it('should forbid hard level cards (硬主) from participating in straight, double straight, and steel plate', () => {
+      // currentRank = '8'. Hard level card: Spades 8
+      const straightWithHardWild: Card[] = [
         { suit: 'S', rank: '5' },
         { suit: 'D', rank: '6' },
         { suit: 'C', rank: '7' },
-        { suit: 'S', rank: '8' }, // level card
+        { suit: 'S', rank: '8' }, // Hard level card
         { suit: 'S', rank: '9' }
       ];
-      const result = canPlay(cards, null, '8');
-      expect(result).not.toBeNull();
-      expect(result?.type).toBe(HAND_TYPES.STRAIGHT);
-      expect(result?.power).toBe(9); // 9 is max weight
+      expect(canPlay(straightWithHardWild, null, '8')).toBeNull();
+
+      const doubleStraightWithHardWild: Card[] = [
+        { suit: 'S', rank: '7' },
+        { suit: 'D', rank: '7' },
+        { suit: 'S', rank: '8' }, // Hard level card
+        { suit: 'D', rank: '8' }, // Hard level card
+        { suit: 'S', rank: '9' },
+        { suit: 'D', rank: '9' }
+      ];
+      expect(canPlay(doubleStraightWithHardWild, null, '8')).toBeNull();
+
+      const steelPlateWithHardWild: Card[] = [
+        { suit: 'S', rank: '7' },
+        { suit: 'D', rank: '7' },
+        { suit: 'C', rank: '7' },
+        { suit: 'S', rank: '8' }, // Hard level card
+        { suit: 'D', rank: '8' }, // Hard level card
+        { suit: 'C', rank: '8' } // Hard level card
+      ];
+      expect(canPlay(steelPlateWithHardWild, null, '8')).toBeNull();
+    });
+
+    it('should correctly evaluate A-2-3-4-5 straight', () => {
+      const cards: Card[] = [
+        { suit: 'S', rank: 'A' },
+        { suit: 'D', rank: '2' },
+        { suit: 'C', rank: '3' },
+        { suit: 'S', rank: '4' },
+        { suit: 'H', rank: '5' }
+      ];
+      const result = evaluateNormalHand(cards, '10');
+      expect(result.type).toBe(HAND_TYPES.STRAIGHT);
+      expect(result.power).toBe(5);
     });
   });
 

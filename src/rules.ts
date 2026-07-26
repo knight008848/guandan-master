@@ -127,19 +127,22 @@ export function evaluateNormalHand(cards: Card[], currentRank: string): Combo {
 
   // 2. 对子
   if (len === 2) {
+    if (cards.every((c) => c.rank === 'red_joker' || c.rank === 'black_joker')) {
+      const redCount = cards.filter((c) => c.rank === 'red_joker').length;
+      let power = 16;
+      if (redCount === 2) power = 18;
+      else if (redCount === 1) power = 17;
+      else power = 16;
+      return {
+        type: HAND_TYPES.PAIR,
+        power,
+        cardCount: 2
+      };
+    }
     if (maxCount === 2) {
       return {
         type: HAND_TYPES.PAIR,
         power: getCardWeight(entries[0][0], currentRank),
-        cardCount: 2
-      };
-    }
-    // 两个王牌（如大王+小王）也可构成对王（对子）
-    if (cards.every((c) => c.rank === 'red_joker' || c.rank === 'black_joker')) {
-      const maxPower = Math.max(...cards.map((c) => getCardWeight(c.rank, currentRank)));
-      return {
-        type: HAND_TYPES.PAIR,
-        power: maxPower,
         cardCount: 2
       };
     }
@@ -328,8 +331,10 @@ function isSameSuit(cards: Card[]): boolean {
 /**
  * 判断5张牌是否能构成顺子，并返回最大权重
  */
-function getStraightMaxWeight(cards: Card[], _currentRank: string): number {
-  if (cards.some((c) => c.rank === 'red_joker' || c.rank === 'black_joker')) {
+function getStraightMaxWeight(cards: Card[], currentRank: string): number {
+  if (
+    cards.some((c) => c.rank === 'red_joker' || c.rank === 'black_joker' || (c.rank === currentRank && c.suit !== 'H'))
+  ) {
     return 0;
   }
 
@@ -359,8 +364,8 @@ function getStraightMaxWeight(cards: Card[], _currentRank: string): number {
 /**
  * 校验双顺或钢板的连续性
  */
-function getSequenceMaxWeight(ranks: string[], _currentRank: string, _requiredLen: number): number {
-  if (ranks.some((r) => r === 'red_joker' || r === 'black_joker')) {
+function getSequenceMaxWeight(ranks: string[], currentRank: string, _requiredLen: number): number {
+  if (ranks.some((r) => r === 'red_joker' || r === 'black_joker' || r === currentRank)) {
     return 0;
   }
 
