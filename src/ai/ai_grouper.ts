@@ -96,16 +96,27 @@ export function extractCardGroups(hand: Card[], currentRank: string): CardGroups
     suits.forEach((suit) => {
       let missingCount = 0;
       const matchedCards: Card[] = [];
+      const substitutedWilds: Card[] = [];
+      let wildIdx = 0;
       range.forEach((rank) => {
         const card = seqCleanHand.find((c) => c.suit === suit && c.rank === rank);
         if (card) {
           matchedCards.push(card);
         } else {
           missingCount++;
+          if (wildIdx < wilds.length) {
+            substitutedWilds.push({
+              suit: suit,
+              rank: rank,
+              isSubstituted: true,
+              original: wilds[wildIdx]
+            });
+            wildIdx++;
+          }
         }
       });
       if (missingCount <= wilds.length) {
-        result.bombs.push([...matchedCards, ...wilds.slice(0, missingCount)]);
+        result.bombs.push([...matchedCards, ...substitutedWilds]);
       }
     });
   });
@@ -247,11 +258,13 @@ export function extractCardGroups(hand: Card[], currentRank: string): CardGroups
     jokers.forEach((j) => {
       allSingles.push(j);
     });
-    if (jokers.length >= 2) {
-      const sortedJokers = [...jokers].sort(
-        (a, b) => getCardWeight(b.rank, currentRank) - getCardWeight(a.rank, currentRank)
-      );
-      allPairs.push([sortedJokers[0], sortedJokers[1]]);
+    const redJokers = jokers.filter((c) => c.rank === 'red_joker');
+    const blackJokers = jokers.filter((c) => c.rank === 'black_joker');
+    if (redJokers.length >= 2) {
+      allPairs.push([redJokers[0], redJokers[1]]);
+    }
+    if (blackJokers.length >= 2) {
+      allPairs.push([blackJokers[0], blackJokers[1]]);
     }
   }
 

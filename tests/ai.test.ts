@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { Card, PlayerStateView } from '../src/types';
 import { aiChoosePlay, aiFollowPlay } from '../src/ai';
 import { extractCardGroups } from '../src/ai/ai_grouper';
-import { HAND_TYPES } from '../src/rules';
+import { HAND_TYPES, canPlay } from '../src/rules';
 
 describe('Guandan AI Unit Tests', () => {
   describe('extractCardGroups', () => {
@@ -74,6 +74,36 @@ describe('Guandan AI Unit Tests', () => {
       const pairOfThrees = groups.pairs.find((p) => p.some((c) => c.rank === '3'));
       expect(pairOfThrees).toBeDefined();
       expect(pairOfThrees?.length).toBe(2);
+    });
+
+    it('should fill wildcard suit and set isSubstituted in extracted straight flushes so they can be played by canPlay', () => {
+      // currentRank = '10'
+      // Hand: Spades 3, Spades 4, Spades 5, Spades 6 + Hearts 10 (wildcard)
+      const hand: Card[] = [
+        { suit: 'S', rank: '3' },
+        { suit: 'S', rank: '4' },
+        { suit: 'S', rank: '5' },
+        { suit: 'S', rank: '6' },
+        { suit: 'H', rank: '10' } // Wildcard
+      ];
+
+      const groups = extractCardGroups(hand, '10');
+      const sfBomb = groups.bombs.find((b) => b.length === 5);
+      expect(sfBomb).toBeDefined();
+
+      // Check that substituted wildcard in sfBomb has suit 'S' and isSubstituted: true
+      const wildCardSub = sfBomb!.find((c) => c.isSubstituted || (c.original && isWildCard(c.original, '10')));
+      expect(wildCardSub).toBeDefined();
+      expect(wildCardSub?.suit).toBe('S');
+      expect(wildCardSub?.isSubstituted).toBe(true);
+
+      // Verify canPlay recognizes it as a straight flush
+      const combo = canPlay(sfBomb!, null, '10');
+      expect(combo).not.toBeNull();
+      expect(combo?.type).toBe(HAND_TYPES.BOMB);
+      expect(combo?.name).toBe('同花顺');
+      expect(combo?.power).toBeGreaterThanOrEqual(557);
+      expect(combo?.power).toBeLessThanOrEqual(564);
     });
   });
 
@@ -166,21 +196,38 @@ describe('Guandan AI Unit Tests', () => {
       expect(play?.[0].rank).toBe('A');
     });
 
-    it('should extract pair of jokers when player has 2 jokers (less than 4)', () => {
-      const hand: Card[] = [
+    it('should extract pair of jokers only when player has 2 identical jokers (2 red jokers or 2 black jokers)', () => {
+      const handRedBlack: Card[] = [
         { suit: 'J', rank: 'red_joker' },
         { suit: 'J', rank: 'black_joker' },
         { suit: 'S', rank: '5' }
       ];
 
-      const groups = extractCardGroups(hand, '2');
-      // Should have 1 pair of jokers
-      expect(groups.pairs.length).toBe(1);
-      expect(groups.pairs[0].length).toBe(2);
-      expect(groups.pairs[0].some((c) => c.rank === 'red_joker')).toBe(true);
-      expect(groups.pairs[0].some((c) => c.rank === 'black_joker')).toBe(true);
-      // No 4-joker sky bomb
-      expect(groups.bombs.length).toBe(0);
+      const groupsRedBlack = extractCardGroups(handRedBlack, '2');
+      // 1 red + 1 black should NOT form a pair
+      expect(groupsRedBlack.pairs.length).toBe(0);
+      expect(groupsRedBlack.singles.some((c) => c.rank === 'red_joker')).toBe(true);
+      expect(groupsRedBlack.singles.some((c) => c.rank === 'black_joker')).toBe(true);
+
+      const handDoubleRed: Card[] = [
+        { suit: 'J', rank: 'red_joker' },
+        { suit: 'J', rank: 'red_joker' },
+        { suit: 'S', rank: '5' }
+      ];
+      const groupsDoubleRed = extractCardGroups(handDoubleRed, '2');
+      expect(groupsDoubleRed.pairs.length).toBe(1);
+      expect(groupsDoubleRed.pairs[0].length).toBe(2);
+      expect(groupsDoubleRed.pairs[0].every((c) => c.rank === 'red_joker')).toBe(true);
+
+      const handDoubleBlack: Card[] = [
+        { suit: 'J', rank: 'black_joker' },
+        { suit: 'J', rank: 'black_joker' },
+        { suit: 'S', rank: '5' }
+      ];
+      const groupsDoubleBlack = extractCardGroups(handDoubleBlack, '2');
+      expect(groupsDoubleBlack.pairs.length).toBe(1);
+      expect(groupsDoubleBlack.pairs[0].length).toBe(2);
+      expect(groupsDoubleBlack.pairs[0].every((c) => c.rank === 'black_joker')).toBe(true);
     });
 
     it('should play single Joker in a timely manner to gain control against high opponent card', () => {
@@ -214,7 +261,7 @@ describe('Guandan AI Unit Tests', () => {
           { suit: 'S', rank: '5' },
           { suit: 'D', rank: '5' },
           { suit: 'J', rank: 'red_joker' },
-          { suit: 'J', rank: 'black_joker' }
+          { suit: 'J', rank: 'red_joker' }
         ],
         lastPlay: {
           type: HAND_TYPES.PAIR,
@@ -231,8 +278,7 @@ describe('Guandan AI Unit Tests', () => {
       const play = aiChoosePlay(view);
       expect(play).not.toBeNull();
       expect(play?.length).toBe(2);
-      expect(play?.some((c) => c.rank === 'red_joker')).toBe(true);
-      expect(play?.some((c) => c.rank === 'black_joker')).toBe(true);
+      expect(play?.every((c) => c.rank === 'red_joker')).toBe(true);
     });
 
     it('should preserve King Bomb (4 Jokers) when opponent plays small cards, and use it against big bomb', () => {
