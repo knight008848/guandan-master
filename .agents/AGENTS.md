@@ -12,6 +12,9 @@
   - **发布前的静态检查与格式化 (Pre-push Lint & Format Gate)**：
     - 所有的代码提交或发布前，必须在本地运行并完成 `npm run lint` 和 `npm run format`，确保 ESLint、Stylelint 和 Prettier 检查通过（0 错误，0 警告）。
     - CI 流水线中已配置了 Lint 和 Test 拦截。严禁提交未经过 Lint 校验的代码以防导致 CI 构建失败。
+  - **测试覆盖率要求 (Test Coverage Gate)**：
+    - 核心逻辑层（包含 `src/rules.ts` 规则引擎、`src/session.ts` 对局会话及 `src/ai/` 决策算法层）的代码行覆盖率（Line Coverage）必须保持在 **80% 以上**。
+    - 任何新增功能或修补程序（Bugfix）提交时，必须同步补充对应的单元测试用例，确保新代码行被测试充分覆盖，禁止提交无测试覆盖的业务逻辑代码。
 
 ## 🔄 开发流程规范 (Development Workflow Guidelines)
 
