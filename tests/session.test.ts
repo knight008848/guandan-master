@@ -155,7 +155,7 @@ describe('GameSession Integration and Flow Tests', () => {
   });
 
   describe('Anti-Tribute (抗贡)', () => {
-    it('should trigger anti-tribute when losers hold 2 red jokers', () => {
+    it('should trigger anti-tribute when losers hold 2 red jokers in single tribute', () => {
       const session = new GameSession();
       session.levelTeamA = 3;
       session.lastRoundFinishedPlayers = [0, 1, 2, 3]; // Player 3 is payer
@@ -182,6 +182,33 @@ describe('GameSession Integration and Flow Tests', () => {
       expect(session.phase).toBe('PLAYING');
       expect(toastMsg).toContain('抗贡成功');
       // Starts with previous round's head游 (player 0)
+      expect(session.currentPlayer).toBe(0);
+    });
+
+    it('should trigger anti-tribute when each loser holds 1 red joker in double tribute', () => {
+      const session = new GameSession();
+      session.levelTeamA = 3;
+      // Double upstream: 1st player 0, 2nd player 2. Payers/losers are player 1 and player 3
+      session.lastRoundFinishedPlayers = [0, 2, 1, 3];
+
+      // Player 1 has 1 Red Joker, Player 3 has 1 Red Joker
+      session.playerHands = [
+        [{ suit: 'S', rank: 'A' }],
+        [{ suit: 'J', rank: 'red_joker' }],
+        [{ suit: 'S', rank: 'J' }],
+        [{ suit: 'J', rank: 'red_joker' }]
+      ];
+
+      let toastMsg = '';
+      session.on('toast', (msg) => {
+        toastMsg = msg;
+      });
+
+      session.checkTribute();
+
+      // Should trigger anti-tribute immediately
+      expect(session.phase).toBe('PLAYING');
+      expect(toastMsg).toContain('抗贡成功');
       expect(session.currentPlayer).toBe(0);
     });
   });
