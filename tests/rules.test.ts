@@ -80,6 +80,19 @@ describe('Guandan Rules Unit Tests', () => {
       expect(result.power).toBe(13);
     });
 
+    it('should detect PAIR of Jokers (red_joker + black_joker)', () => {
+      const result = evaluateNormalHand(
+        [
+          { suit: 'J', rank: 'red_joker' },
+          { suit: 'J', rank: 'black_joker' }
+        ],
+        '2'
+      );
+      expect(result.type).toBe(HAND_TYPES.PAIR);
+      expect(result.power).toBe(17);
+      expect(result.cardCount).toBe(2);
+    });
+
     it('should detect BOMB', () => {
       const result = evaluateNormalHand(
         [

@@ -21,6 +21,7 @@ export interface ProposalAudit {
     handCountReduction: number; // 减少手数评分
     controlWaste: number; // 大牌浪费度扣分
     comboIntegrity: number; // 破坏手牌连贯度扣分
+    initiativeBonus: number; // 抢控出牌权加分
   };
 }
 
@@ -77,9 +78,13 @@ export function auditAndComparePlays(view: PlayerStateView, proposals: PlayPropo
     }
 
     // 计算决策指标评分
-    const metrics = calculateMetrics(prop.cards, hand, currentRank, playedCombo);
+    const metrics = calculateMetrics(prop.cards, hand, currentRank, playedCombo, lastPlay);
     const score = isValid
-      ? metrics.handCountReduction - metrics.controlWaste - metrics.comboIntegrity - friendlyFirePenalty
+      ? metrics.handCountReduction -
+        metrics.controlWaste -
+        metrics.comboIntegrity +
+        metrics.initiativeBonus -
+        friendlyFirePenalty
       : -9999; // 非法出牌赋予极低分
 
     return {
@@ -145,10 +150,11 @@ function calculateMetrics(
   playCards: Card[] | null,
   hand: Card[],
   currentRank: string,
-  combo: Combo | null
+  combo: Combo | null,
+  lastPlay: PlayerStateView['lastPlay']
 ): ProposalAudit['metrics'] {
   if (!playCards || playCards.length === 0 || !combo) {
-    return { handCountReduction: 0, controlWaste: 0, comboIntegrity: 0 };
+    return { handCountReduction: 0, controlWaste: 0, comboIntegrity: 0, initiativeBonus: 0 };
   }
 
   // 1. 手数减少估值
@@ -211,9 +217,34 @@ function calculateMetrics(
   const handSizeFactor = Math.max(0.3, hand.length / 27);
   const comboIntegrity = Math.max(0, Math.round(rawIntegrityPenalty * handSizeFactor - controlBonus));
 
+  // 4. 抢控出牌权加分 (Initiative Control Bonus for Jokers / Bombs)
+  let initiativeBonus = 0;
+  const containsRedJoker = playCards.some((c) => c.rank === 'red_joker');
+  const containsBlackJoker = playCards.some((c) => c.rank === 'black_joker');
+  const isJokerPair = playCards.length === 2 && containsRedJoker && containsBlackJoker;
+  const isKingBomb = combo.type === HAND_TYPES.BOMB && combo.power === 1000;
+
+  if (isKingBomb) {
+    initiativeBonus += 160;
+  } else if (isJokerPair) {
+    initiativeBonus += 70;
+  } else if (containsRedJoker) {
+    initiativeBonus += 40;
+  } else if (containsBlackJoker) {
+    initiativeBonus += 28;
+  } else if (combo.type === HAND_TYPES.BOMB) {
+    initiativeBonus += 45;
+  }
+
+  // 对方出牌较强（权值 >= 10 或炸弹）时，压制对方并抢回出牌权具有额外策略价值
+  if (lastPlay && (lastPlay.power >= 10 || lastPlay.type === HAND_TYPES.BOMB)) {
+    initiativeBonus += 15;
+  }
+
   return {
     handCountReduction,
     controlWaste,
-    comboIntegrity
+    comboIntegrity,
+    initiativeBonus
   };
 }
