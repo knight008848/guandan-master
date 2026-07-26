@@ -3,9 +3,9 @@
  * 纯视图层，通过监听 GameSession 事件进行 UI 绘制及特效呈现
  */
 
-import { Card, Combo, HandType, Suit, SettlementType } from './types';
+import { Card, Combo, HandType, Suit, SettlementType, PlayerRemainingCards } from './types';
 import { GameSession } from './session';
-import { sortCards, isWildCard, getCardWeight } from './rules';
+import { sortCards, isWildCard, getCardWeight, formatCard } from './rules';
 import { aiFollowPlay } from './ai';
 
 export class DOMRenderer {
@@ -165,6 +165,14 @@ export class DOMRenderer {
         this.showSettlementOverlay(rankListHtml, settlement);
       }
     );
+
+    this.session.on('remaining_cards_logged', (logs: PlayerRemainingCards[]) => {
+      this.addGameLog('🂠 【单局结算 - 玩家未出完手牌】', 'round-end');
+      logs.forEach((item) => {
+        const statusText = item.cardCount === 0 ? '已出完 (0张)' : `剩余 ${item.cardCount} 张 [${item.formattedCards}]`;
+        this.addGameLog(`${item.playerName}: ${statusText}`, 'round-end');
+      });
+    });
 
     this.session.on('toast', (msg: string) => {
       this.showToast(msg);
@@ -845,10 +853,7 @@ export class DOMRenderer {
   }
 
   private getCardName(card: Card): string {
-    const suitNames: Record<Suit, string> = { H: '红桃', D: '方块', C: '梅花', S: '黑桃', J: '' };
-    if (card.rank === 'red_joker') return '大王';
-    if (card.rank === 'black_joker') return '小王';
-    return suitNames[card.suit] + card.rank;
+    return formatCard(card);
   }
 
   private getHandTypeName(type: HandType): string {

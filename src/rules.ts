@@ -82,6 +82,24 @@ export function sortCards(cards: Card[], currentRank: string): Card[] {
 }
 
 /**
+ * 格式化单张牌为可读字符串（如：红桃A、大王、黑桃10）
+ */
+export function formatCard(card: Card): string {
+  const suitNames: Record<Suit, string> = { H: '红桃', D: '方块', C: '梅花', S: '黑桃', J: '' };
+  if (card.rank === 'red_joker') return '大王';
+  if (card.rank === 'black_joker') return '小王';
+  return (suitNames[card.suit] || '') + card.rank;
+}
+
+/**
+ * 格式化手牌列表为可读字符串（如：红桃A, 黑桃10）
+ */
+export function formatHand(cards: Card[]): string {
+  if (!cards || cards.length === 0) return '已出完';
+  return cards.map(formatCard).join(', ');
+}
+
+/**
  * 判定不含未指定逢人配（即已假定替代）的正常手牌
  */
 export function evaluateNormalHand(cards: Card[], currentRank: string): Combo {
