@@ -155,8 +155,10 @@ function calculateMetrics(
   const controlAfter = calculateControlScore(remainingHand, currentRank);
   const controlWaste = (controlBefore - controlAfter) * 1.5;
 
-  // 3. 破坏手牌连贯性扣分（拆炸弹）
-  let comboIntegrity = 0;
+  // 3. 破坏手牌连贯性扣分（拆炸弹/拆三张/拆对子，引入残局衰减与大牌补偿）
+  let rawIntegrityPenalty = 0;
+  let controlBonus = 0;
+
   const cardCountsBefore: Record<string, number> = {};
   hand.forEach((c) => {
     if (c.rank !== 'red_joker' && c.rank !== 'black_joker' && !isWildCard(c, currentRank)) {
@@ -169,6 +171,11 @@ function calculateMetrics(
     if (cardCountsAfter[c.rank] !== undefined) {
       cardCountsAfter[c.rank]--;
     }
+    // 计算所出牌的大牌控制力补偿
+    const w = getCardWeight(c.rank, currentRank);
+    if (w >= 12) {
+      controlBonus += (w - 10) * 4;
+    }
   });
 
   Object.keys(cardCountsBefore).forEach((rank) => {
@@ -176,16 +183,20 @@ function calculateMetrics(
     const countAfterRank = cardCountsAfter[rank];
 
     if (countBeforeRank >= 4 && countAfterRank > 0 && countAfterRank < 4) {
-      // 拆炸弹：扣 100 分
-      comboIntegrity += 100;
+      // 拆炸弹：高惩罚 100 分
+      rawIntegrityPenalty += 100;
     } else if (countBeforeRank === 3 && countAfterRank > 0 && countAfterRank < 3) {
-      // 拆三张：扣 70 分
-      comboIntegrity += 70;
+      // 拆三张：基础惩罚 35 分（原 70 分）
+      rawIntegrityPenalty += 35;
     } else if (countBeforeRank === 2 && countAfterRank === 1) {
-      // 拆对子：扣 40 分
-      comboIntegrity += 40;
+      // 拆对子：基础惩罚 18 分（原 40 分）
+      rawIntegrityPenalty += 18;
     }
   });
+
+  // 残局衰减因子（起手 27 张牌，剩余手牌越少扣分越小，最低 0.3）
+  const handSizeFactor = Math.max(0.3, hand.length / 27);
+  const comboIntegrity = Math.max(0, Math.round(rawIntegrityPenalty * handSizeFactor - controlBonus));
 
   return {
     handCountReduction,
