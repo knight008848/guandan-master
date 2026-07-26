@@ -224,7 +224,7 @@ function calculateMetrics(
   const redJokerCount = playCards.filter((c) => c.rank === 'red_joker').length;
   const blackJokerCount = playCards.filter((c) => c.rank === 'black_joker').length;
   const isJokerPair = playCards.length === 2 && (redJokerCount === 2 || blackJokerCount === 2);
-  const isKingBomb = combo.type === HAND_TYPES.BOMB && combo.power === 1000;
+  const isKingBomb = combo.type === HAND_TYPES.BOMB && (combo.name === '天王炸' || combo.power >= 2000);
 
   if (isKingBomb) {
     initiativeBonus += 160;

@@ -181,7 +181,7 @@ export function evaluateNormalHand(cards: Card[], currentRank: string): Combo {
     if (jokerCount === 4) {
       return {
         type: HAND_TYPES.BOMB,
-        power: 1000, // 天王炸最大
+        power: 2000, // 天王炸最大 (高于10张炸弹及所有普通炸弹)
         name: '天王炸',
         cardCount: 4
       };
@@ -391,7 +391,7 @@ function getSequenceMaxWeight(ranks: string[], currentRank: string, _requiredLen
     return vals[vals.length - 1];
   }
 
-  if (faceValues.includes(14)) {
+  if (faceValues.includes(14) && vals.length >= 3) {
     const altVals = faceValues.map((v) => (v === 14 ? 1 : v)).sort((a, b) => a - b);
     if (isConsecutive(altVals)) {
       return altVals[altVals.length - 1];
@@ -420,8 +420,8 @@ export function canPlay(cardsPlay: Card[], prevPlay: Combo | null, currentRank: 
     return bestPlay;
   }
 
-  if (bestPlay.power === 1000) return bestPlay;
-  if (prevPlay.power === 1000) return null;
+  if (bestPlay.name === '天王炸' || bestPlay.power >= 2000) return bestPlay;
+  if (prevPlay.name === '天王炸' || prevPlay.power >= 2000) return null;
 
   if (bestPlay.type === HAND_TYPES.BOMB && prevPlay.type !== HAND_TYPES.BOMB) {
     return bestPlay;

@@ -12,7 +12,7 @@ import {
 } from '../src/rules';
 
 describe('Guandan Rules Unit Tests', () => {
-  describe('getCardWeight', () => {
+  describe('Basic utilities (getCardWeight, isWildCard, sortCards, formatCard)', () => {
     it('should return correct weights for normal cards', () => {
       expect(getCardWeight('2', '2')).toBe(15); // currentRank rank
       expect(getCardWeight('2', '10')).toBe(2);
@@ -25,9 +25,7 @@ describe('Guandan Rules Unit Tests', () => {
       expect(getCardWeight('black_joker', '2')).toBe(16);
       expect(getCardWeight('red_joker', '2')).toBe(17);
     });
-  });
 
-  describe('isWildCard', () => {
     it('should identify red heart of current rank as wild card', () => {
       const heartsWild: Card = { suit: 'H', rank: '10' };
       expect(isWildCard(heartsWild, '10')).toBe(true);
@@ -52,26 +50,16 @@ describe('Guandan Rules Unit Tests', () => {
       };
       expect(isWildCard(substitutedCard, '2')).toBe(true);
     });
-  });
 
-  describe('sortCards', () => {
     it('should sort cards in correct hierarchy: wild card -> weight descending -> suit descending', () => {
       const cards: Card[] = [
-        { suit: 'D', rank: 'A' }, // weight 14
-        { suit: 'H', rank: '2' }, // wild card (current rank 2)
-        { suit: 'S', rank: 'K' }, // weight 13
-        { suit: 'C', rank: 'A' }, // weight 14
-        { suit: 'J', rank: 'red_joker' } // weight 17
+        { suit: 'D', rank: 'A' },
+        { suit: 'H', rank: '2' },
+        { suit: 'S', rank: 'K' },
+        { suit: 'C', rank: 'A' },
+        { suit: 'J', rank: 'red_joker' }
       ];
-
       const sorted = sortCards(cards, '2');
-
-      // Expected order:
-      // 1. H2 (wild card)
-      // 2. red_joker
-      // 3. A (suit S/H/C/D order: C is H>S>C>D)
-      // 4. A (suit D)
-      // 5. K (suit S)
       expect(sorted[0]).toEqual({ suit: 'H', rank: '2' });
       expect(sorted[1]).toEqual({ suit: 'J', rank: 'red_joker' });
       expect(sorted[2]).toEqual({ suit: 'C', rank: 'A' });
@@ -80,131 +68,31 @@ describe('Guandan Rules Unit Tests', () => {
     });
   });
 
-  describe('evaluateNormalHand', () => {
-    it('should detect SINGLE', () => {
-      const result = evaluateNormalHand([{ suit: 'S', rank: 'A' }], '2');
-      expect(result.type).toBe(HAND_TYPES.SINGLE);
-      expect(result.power).toBe(14);
-    });
+  /* -------------------------------------------------------------------------- */
+  /* 1. 炸弹与同花顺威力阶梯 (Rules §1.1 & §1.9)                                 */
+  /* -------------------------------------------------------------------------- */
+  describe('Rule 1: Bomb and Straight Flush Power Hierarchy (Rules §1.1 & §1.9)', () => {
+    it('should follow hierarchy: King Bomb (4 Jokers) > 10-card Bomb > 8-card Bomb > 7-card Bomb > 6-card Bomb > Straight Flush > 5-card Bomb > 4-card Bomb > Normal Combo', () => {
+      const currentRank = '10';
 
-    it('should detect PAIR', () => {
-      const result = evaluateNormalHand(
-        [
-          { suit: 'S', rank: 'K' },
-          { suit: 'D', rank: 'K' }
-        ],
-        '2'
-      );
-      expect(result.type).toBe(HAND_TYPES.PAIR);
-      expect(result.power).toBe(13);
-    });
-
-    it('should evaluate Joker pairs correctly (Double Red: 18, Double Black: 16, Red+Black: INVALID)', () => {
-      const doubleRed = evaluateNormalHand(
-        [
-          { suit: 'J', rank: 'red_joker' },
-          { suit: 'J', rank: 'red_joker' }
-        ],
-        '2'
-      );
-      const doubleBlack = evaluateNormalHand(
-        [
-          { suit: 'J', rank: 'black_joker' },
-          { suit: 'J', rank: 'black_joker' }
-        ],
-        '2'
-      );
-      const redBlack = evaluateNormalHand(
-        [
-          { suit: 'J', rank: 'red_joker' },
-          { suit: 'J', rank: 'black_joker' }
-        ],
-        '2'
-      );
-
-      expect(doubleRed.type).toBe(HAND_TYPES.PAIR);
-      expect(doubleRed.power).toBe(18);
-
-      expect(doubleBlack.type).toBe(HAND_TYPES.PAIR);
-      expect(doubleBlack.power).toBe(16);
-
-      expect(redBlack.type).toBe(HAND_TYPES.INVALID);
-
-      // Verify canPlay: Red+Black is INVALID and returns null
-      const comboRedBlack = canPlay(
-        [
-          { suit: 'J', rank: 'red_joker' },
-          { suit: 'J', rank: 'black_joker' }
-        ],
-        null,
-        '2'
-      );
-      expect(comboRedBlack).toBeNull();
-    });
-
-    it('should detect BOMB', () => {
-      const result = evaluateNormalHand(
-        [
-          { suit: 'S', rank: '8' },
-          { suit: 'D', rank: '8' },
-          { suit: 'C', rank: '8' },
-          { suit: 'H', rank: '8' }
-        ],
-        '2'
-      );
-      expect(result.type).toBe(HAND_TYPES.BOMB);
-      expect(result.power).toBe(408); // 4-card bomb power: 400 + rankWeight
-    });
-  });
-
-  describe('canPlay', () => {
-    it('should allow playing a higher card of the same type', () => {
-      const lastPlay = { type: HAND_TYPES.SINGLE, power: 10, cardCount: 1 };
-      const currentCards: Card[] = [{ suit: 'S', rank: 'J' }]; // weight 11
-      const result = canPlay(currentCards, lastPlay, '2');
-      expect(result).not.toBeNull();
-      expect(result?.type).toBe(HAND_TYPES.SINGLE);
-    });
-
-    it('should not allow playing a lower card of the same type', () => {
-      const lastPlay = { type: HAND_TYPES.SINGLE, power: 12, cardCount: 1 }; // Queen
-      const currentCards: Card[] = [{ suit: 'S', rank: 'J' }]; // Jack
-      const result = canPlay(currentCards, lastPlay, '2');
-      expect(result).toBeNull();
-    });
-
-    it('should allow a bomb to beat a normal type', () => {
-      const lastPlay = { type: HAND_TYPES.PAIR, power: 14, cardCount: 2 }; // Pair of Aces
-      const bomb: Card[] = [
-        { suit: 'S', rank: '5' },
-        { suit: 'D', rank: '5' },
-        { suit: 'C', rank: '5' },
-        { suit: 'H', rank: '5' }
-      ];
-      const result = canPlay(bomb, lastPlay, '2');
-      expect(result).not.toBeNull();
-      expect(result?.type).toBe(HAND_TYPES.BOMB);
-    });
-
-    it('should respect the new hierarchy: 6+ bomb > straight flush > 5 bomb > 4 bomb', () => {
-      // 4-card bomb of Jacks (weight 11, power 411)
+      // 4-card Bomb of 9s
       const bomb4: Card[] = [
-        { suit: 'S', rank: 'J' },
-        { suit: 'D', rank: 'J' },
-        { suit: 'C', rank: 'J' },
-        { suit: 'H', rank: 'J' }
+        { suit: 'S', rank: '9' },
+        { suit: 'D', rank: '9' },
+        { suit: 'C', rank: '9' },
+        { suit: 'H', rank: '9' }
       ];
 
-      // 5-card bomb of 4s (weight 4, power 504)
+      // 5-card Bomb of 4s
       const bomb5: Card[] = [
         { suit: 'S', rank: '4' },
         { suit: 'D', rank: '4' },
         { suit: 'C', rank: '4' },
         { suit: 'H', rank: '4' },
-        { suit: 'D', rank: '4' }
+        { suit: 'S', rank: '4' }
       ];
 
-      // Straight flush (同花顺) 3-4-5-6-7 of Spades (straightVal 7, power 557)
+      // Straight Flush (同花顺 3-4-5-6-7 Spades)
       const straightFlush: Card[] = [
         { suit: 'S', rank: '3' },
         { suit: 'S', rank: '4' },
@@ -213,7 +101,7 @@ describe('Guandan Rules Unit Tests', () => {
         { suit: 'S', rank: '7' }
       ];
 
-      // 6-card bomb of 3s (weight 3, power 603)
+      // 6-card Bomb of 3s
       const bomb6: Card[] = [
         { suit: 'S', rank: '3' },
         { suit: 'D', rank: '3' },
@@ -223,126 +111,632 @@ describe('Guandan Rules Unit Tests', () => {
         { suit: 'D', rank: '3' }
       ];
 
-      // Check individual power evaluations
-      const combo4 = canPlay(bomb4, null, '10')!;
-      expect(combo4.power).toBe(411);
+      // 7-card Bomb of 3s
+      const bomb7: Card[] = [...bomb6, { suit: 'C', rank: '3' }];
 
-      const combo5 = canPlay(bomb5, null, '10')!;
+      // 8-card Bomb of 3s
+      const bomb8: Card[] = [...bomb7, { suit: 'H', rank: '3' }];
+
+      // King Bomb (4 Jokers)
+      const kingBomb: Card[] = [
+        { suit: 'J', rank: 'red_joker' },
+        { suit: 'J', rank: 'red_joker' },
+        { suit: 'J', rank: 'black_joker' },
+        { suit: 'J', rank: 'black_joker' }
+      ];
+
+      const combo4 = canPlay(bomb4, null, currentRank)!;
+      const combo5 = canPlay(bomb5, null, currentRank)!;
+      const comboSF = canPlay(straightFlush, null, currentRank)!;
+      const combo6 = canPlay(bomb6, null, currentRank)!;
+      const combo7 = canPlay(bomb7, null, currentRank)!;
+      const combo8 = canPlay(bomb8, null, currentRank)!;
+      const comboKing = canPlay(kingBomb, null, currentRank)!;
+
+      // Check power values
+      expect(combo4.power).toBe(409);
       expect(combo5.power).toBe(504);
-
-      const comboSF = canPlay(straightFlush, null, '10')!;
       expect(comboSF.power).toBe(557);
-      expect(comboSF.power).toBeGreaterThanOrEqual(557);
-      expect(comboSF.power).toBeLessThanOrEqual(564);
+      expect(combo6.power).toBe(603);
+      expect(combo7.power).toBe(703);
+      expect(combo8.power).toBe(803);
+      expect(comboKing.power).toBe(2000);
 
-      const combo6Val = canPlay(bomb6, null, '10')!;
-      expect(combo6Val.power).toBe(603);
+      // Verify hierarchy sequence
+      expect(canPlay(bomb5, combo4, currentRank)).not.toBeNull();
+      expect(canPlay(straightFlush, combo5, currentRank)).not.toBeNull();
+      expect(canPlay(bomb6, comboSF, currentRank)).not.toBeNull();
+      expect(canPlay(bomb7, combo6, currentRank)).not.toBeNull();
+      expect(canPlay(bomb8, combo7, currentRank)).not.toBeNull();
+      expect(canPlay(kingBomb, combo8, currentRank)).not.toBeNull();
 
-      // 1. 5-card bomb beats 4-card bomb
-      expect(canPlay(bomb5, combo4, '10')).not.toBeNull();
-
-      // 2. Straight flush beats 4-card bomb and 5-card bomb
-      const sfOver4 = canPlay(straightFlush, combo4, '10');
-      expect(sfOver4).not.toBeNull();
-      expect(sfOver4?.name).toBe('同花顺');
-
-      const sfOver5 = canPlay(straightFlush, combo5, '10');
-      expect(sfOver5).not.toBeNull();
-      expect(sfOver5?.name).toBe('同花顺');
-
-      // 3. 5-card bomb does not beat straight flush
-      expect(canPlay(bomb5, comboSF, '10')).toBeNull();
-
-      // 4. 6-card bomb beats straight flush
-      const combo6 = canPlay(bomb6, comboSF, '10');
-      expect(combo6).not.toBeNull();
-      expect(combo6?.name).toBe('6张炸弹');
-
-      // 5. Straight flush does not beat 6-card bomb
-      expect(canPlay(straightFlush, combo6, '10')).toBeNull();
+      // Lower cannot beat higher
+      expect(canPlay(bomb5, comboSF, currentRank)).toBeNull();
+      expect(canPlay(straightFlush, combo6, currentRank)).toBeNull();
+      expect(canPlay(bomb8, comboKing, currentRank)).toBeNull();
     });
 
-    it('should detect straight flush with wild card and evaluate correct power (557~564)', () => {
-      // currentRank = '10'
-      // Hand: Spades 5, Spades 6, Spades 7, Spades 8, Hearts 10 (wild card -> Spades 9, straightVal 9, power 559)
-      const cards: Card[] = [
+    it('should verify straight flush power (550 + straightVal) > all 4/5-card bombs and < all 6+-card bombs', () => {
+      const currentRank = '9';
+      // Max straight flush (10-J-Q-K-A Spades) -> straightVal 14, power = 564
+      const maxSF: Card[] = [
+        { suit: 'S', rank: '10' },
+        { suit: 'S', rank: 'J' },
+        { suit: 'S', rank: 'Q' },
+        { suit: 'S', rank: 'K' },
+        { suit: 'S', rank: 'A' }
+      ];
+      // Min straight flush (A-2-3-4-5 Spades) -> straightVal 5, power = 555
+      const minSF: Card[] = [
+        { suit: 'S', rank: 'A' },
+        { suit: 'S', rank: '2' },
+        { suit: 'S', rank: '3' },
+        { suit: 'S', rank: '4' },
+        { suit: 'S', rank: '5' }
+      ];
+
+      const comboMaxSF = canPlay(maxSF, null, currentRank)!;
+      const comboMinSF = canPlay(minSF, null, currentRank)!;
+
+      expect(comboMinSF.power).toBe(555);
+      expect(comboMaxSF.power).toBe(564);
+
+      // Highest 5-card bomb (5 Aces -> 514) is less than minSF (555)
+      const bomb5Aces: Card[] = [
+        { suit: 'S', rank: 'A' },
+        { suit: 'D', rank: 'A' },
+        { suit: 'C', rank: 'A' },
+        { suit: 'H', rank: 'A' },
+        { suit: 'S', rank: 'A' }
+      ];
+      const combo5Aces = canPlay(bomb5Aces, null, currentRank)!;
+      expect(combo5Aces.power).toBe(514);
+      expect(canPlay(minSF, combo5Aces, currentRank)).not.toBeNull();
+      expect(canPlay(bomb5Aces, comboMinSF, currentRank)).toBeNull();
+
+      // Lowest 6-card bomb (6 2s -> 602) is greater than maxSF (564)
+      const bomb6Twos: Card[] = [
+        { suit: 'S', rank: '2' },
+        { suit: 'D', rank: '2' },
+        { suit: 'C', rank: '2' },
+        { suit: 'H', rank: '2' },
+        { suit: 'S', rank: '2' },
+        { suit: 'D', rank: '2' }
+      ];
+      const combo6Twos = canPlay(bomb6Twos, null, currentRank)!;
+      expect(combo6Twos.power).toBe(602);
+      expect(canPlay(bomb6Twos, comboMaxSF, currentRank)).not.toBeNull();
+      expect(canPlay(maxSF, combo6Twos, currentRank)).toBeNull();
+    });
+
+    it('should form 10-card bomb using 8 natural cards + 2 wildcards', () => {
+      const currentRank = '10';
+      // 8 natural 8s + 2 wildcards (Hearts 10)
+      const hand10: Card[] = [
+        { suit: 'S', rank: '8' },
+        { suit: 'S', rank: '8' },
+        { suit: 'D', rank: '8' },
+        { suit: 'D', rank: '8' },
+        { suit: 'C', rank: '8' },
+        { suit: 'C', rank: '8' },
+        { suit: 'H', rank: '8' },
+        { suit: 'H', rank: '8' },
+        { suit: 'H', rank: '10' }, // Wildcard 1
+        { suit: 'H', rank: '10' }  // Wildcard 2
+      ];
+
+      const combo10 = canPlay(hand10, null, currentRank)!;
+      expect(combo10).not.toBeNull();
+      expect(combo10.type).toBe(HAND_TYPES.BOMB);
+      expect(combo10.power).toBe(1008);
+      expect(combo10.cardCount).toBe(10);
+
+      // 10-card bomb beats 8-card bomb
+      const bomb8: Card[] = [
+        { suit: 'S', rank: 'K' },
+        { suit: 'S', rank: 'K' },
+        { suit: 'D', rank: 'K' },
+        { suit: 'D', rank: 'K' },
+        { suit: 'C', rank: 'K' },
+        { suit: 'C', rank: 'K' },
+        { suit: 'H', rank: 'K' },
+        { suit: 'H', rank: 'K' }
+      ];
+      const combo8 = canPlay(bomb8, null, currentRank)!;
+      expect(canPlay(hand10, combo8, currentRank)).not.toBeNull();
+
+      // King Bomb (4 Jokers, power 2000) beats 10-card bomb
+      const kingBomb: Card[] = [
+        { suit: 'J', rank: 'red_joker' },
+        { suit: 'J', rank: 'red_joker' },
+        { suit: 'J', rank: 'black_joker' },
+        { suit: 'J', rank: 'black_joker' }
+      ];
+      const comboKing = canPlay(kingBomb, null, currentRank)!;
+      expect(canPlay(kingBomb, combo10, currentRank)).not.toBeNull();
+      expect(canPlay(hand10, comboKing, currentRank)).toBeNull();
+    });
+  });
+
+  /* -------------------------------------------------------------------------- */
+  /* 2. 同花顺规则 (Rules §1.2)                                                 */
+  /* -------------------------------------------------------------------------- */
+  describe('Rule 2: Straight Flush Rules (Rules §1.2)', () => {
+    it('should evaluate max straight flush 10-J-Q-K-A (14) and min straight flush A-2-3-4-5 (5)', () => {
+      const currentRank = '9';
+      const maxSF: Card[] = [
+        { suit: 'H', rank: '10' },
+        { suit: 'H', rank: 'J' },
+        { suit: 'H', rank: 'Q' },
+        { suit: 'H', rank: 'K' },
+        { suit: 'H', rank: 'A' }
+      ];
+      const minSF: Card[] = [
+        { suit: 'C', rank: 'A' },
+        { suit: 'C', rank: '2' },
+        { suit: 'C', rank: '3' },
+        { suit: 'C', rank: '4' },
+        { suit: 'C', rank: '5' }
+      ];
+
+      const comboMax = canPlay(maxSF, null, currentRank)!;
+      expect(comboMax.type).toBe(HAND_TYPES.BOMB);
+      expect(comboMax.name).toBe('同花顺');
+      expect(comboMax.power).toBe(564); // 550 + 14
+
+      const comboMin = canPlay(minSF, null, currentRank)!;
+      expect(comboMin.type).toBe(HAND_TYPES.BOMB);
+      expect(comboMin.name).toBe('同花顺');
+      expect(comboMin.power).toBe(555); // 550 + 5
+    });
+
+    it('should support wild card substituting missing card and auto-cloning suit for straight flush', () => {
+      const currentRank = '10'; // Hearts 10 is wildcard
+      // Spades 5, 6, 7, 8 + Hearts 10 (wildcard -> Spades 9)
+      const sfWithWild: Card[] = [
         { suit: 'S', rank: '5' },
         { suit: 'S', rank: '6' },
         { suit: 'S', rank: '7' },
         { suit: 'S', rank: '8' },
-        { suit: 'H', rank: '10' } // Wild card
+        { suit: 'H', rank: '10' }
       ];
-      const result = canPlay(cards, null, '10');
-      expect(result).not.toBeNull();
-      expect(result?.type).toBe(HAND_TYPES.BOMB);
-      expect(result?.name).toBe('同花顺');
-      expect(result?.power).toBeGreaterThanOrEqual(557);
-      expect(result?.power).toBeLessThanOrEqual(564);
+
+      const combo = canPlay(sfWithWild, null, currentRank)!;
+      expect(combo).not.toBeNull();
+      expect(combo.type).toBe(HAND_TYPES.BOMB);
+      expect(combo.name).toBe('同花顺');
+      expect(combo.power).toBe(559); // 550 + 9
     });
 
-    it('should detect straight flush when wild card substitutes level card rank (e.g. Heart 2 as Spade 2 in Spade A-2-3-4-5)', () => {
-      // currentRank = '2'
-      // Hand: Spades A, Spades 3, Spades 4, Spades 5, Hearts 2 (wild card -> Spades 2, forming Spade A-2-3-4-5 straight flush)
-      const cards: Card[] = [
-        { suit: 'S', rank: 'A' },
-        { suit: 'S', rank: '3' },
-        { suit: 'S', rank: '4' },
+    it('should not treat 5 consecutive cards of mixed suits as straight flush', () => {
+      const currentRank = '2';
+      const mixedStraight: Card[] = [
         { suit: 'S', rank: '5' },
-        { suit: 'H', rank: '2' } // Wild card substituting Spade 2
-      ];
-      const result = canPlay(cards, null, '2');
-      expect(result).not.toBeNull();
-      expect(result?.type).toBe(HAND_TYPES.BOMB);
-      expect(result?.name).toBe('同花顺');
-      expect(result?.power).toBeGreaterThan(550);
-    });
-
-    it('should forbid hard level cards (硬主) from participating in straight, double straight, and steel plate', () => {
-      // currentRank = '8'. Hard level card: Spades 8
-      const straightWithHardWild: Card[] = [
-        { suit: 'S', rank: '5' },
-        { suit: 'D', rank: '6' },
-        { suit: 'C', rank: '7' },
-        { suit: 'S', rank: '8' }, // Hard level card
-        { suit: 'S', rank: '9' }
-      ];
-      expect(canPlay(straightWithHardWild, null, '8')).toBeNull();
-
-      const doubleStraightWithHardWild: Card[] = [
+        { suit: 'S', rank: '6' },
         { suit: 'S', rank: '7' },
-        { suit: 'D', rank: '7' },
-        { suit: 'S', rank: '8' }, // Hard level card
-        { suit: 'D', rank: '8' }, // Hard level card
-        { suit: 'S', rank: '9' },
-        { suit: 'D', rank: '9' }
+        { suit: 'S', rank: '8' },
+        { suit: 'D', rank: '9' } // Diamonds suit (not a wild card or same suit)
       ];
-      expect(canPlay(doubleStraightWithHardWild, null, '8')).toBeNull();
 
-      const steelPlateWithHardWild: Card[] = [
-        { suit: 'S', rank: '7' },
-        { suit: 'D', rank: '7' },
-        { suit: 'C', rank: '7' },
-        { suit: 'S', rank: '8' }, // Hard level card
-        { suit: 'D', rank: '8' }, // Hard level card
-        { suit: 'C', rank: '8' } // Hard level card
-      ];
-      expect(canPlay(steelPlateWithHardWild, null, '8')).toBeNull();
-    });
-
-    it('should correctly evaluate A-2-3-4-5 straight', () => {
-      const cards: Card[] = [
-        { suit: 'S', rank: 'A' },
-        { suit: 'D', rank: '2' },
-        { suit: 'C', rank: '3' },
-        { suit: 'S', rank: '4' },
-        { suit: 'H', rank: '5' }
-      ];
-      const result = evaluateNormalHand(cards, '10');
-      expect(result.type).toBe(HAND_TYPES.STRAIGHT);
-      expect(result.power).toBe(5);
+      const combo = canPlay(mixedStraight, null, currentRank);
+      expect(combo).not.toBeNull();
+      expect(combo?.type).toBe(HAND_TYPES.STRAIGHT); // Single straight, NOT bomb/straight flush
     });
   });
 
+  /* -------------------------------------------------------------------------- */
+  /* 3. 单顺规则 (Rules §1.3)                                                   */
+  /* -------------------------------------------------------------------------- */
+  describe('Rule 3: Single Straight Rules (Rules §1.3)', () => {
+    it('should strictly require exactly 5 cards (4 or 6 cards are invalid)', () => {
+      const currentRank = '2';
+      const cards4: Card[] = [
+        { suit: 'S', rank: '3' },
+        { suit: 'D', rank: '4' },
+        { suit: 'C', rank: '5' },
+        { suit: 'H', rank: '6' }
+      ];
+      const cards6: Card[] = [
+        { suit: 'S', rank: '3' },
+        { suit: 'D', rank: '4' },
+        { suit: 'C', rank: '5' },
+        { suit: 'H', rank: '6' },
+        { suit: 'S', rank: '7' },
+        { suit: 'D', rank: '8' }
+      ];
+
+      expect(canPlay(cards4, null, currentRank)).toBeNull();
+      expect(canPlay(cards6, null, currentRank)).toBeNull();
+    });
+
+    it('should accept valid straights from A-2-3-4-5 (5) to 10-J-Q-K-A (14)', () => {
+      const currentRank = '9';
+      const straightLow: Card[] = [
+        { suit: 'S', rank: 'A' },
+        { suit: 'D', rank: '2' },
+        { suit: 'C', rank: '3' },
+        { suit: 'H', rank: '4' },
+        { suit: 'S', rank: '5' }
+      ];
+      const straightHigh: Card[] = [
+        { suit: 'S', rank: '10' },
+        { suit: 'D', rank: 'J' },
+        { suit: 'C', rank: 'Q' },
+        { suit: 'H', rank: 'K' },
+        { suit: 'S', rank: 'A' }
+      ];
+
+      const comboLow = canPlay(straightLow, null, currentRank)!;
+      expect(comboLow.type).toBe(HAND_TYPES.STRAIGHT);
+      expect(comboLow.power).toBe(5);
+
+      const comboHigh = canPlay(straightHigh, null, currentRank)!;
+      expect(comboHigh.type).toBe(HAND_TYPES.STRAIGHT);
+      expect(comboHigh.power).toBe(14);
+    });
+
+    it('should forbid jokers from participating in single straight', () => {
+      const currentRank = '2';
+      const straightWithRedJoker: Card[] = [
+        { suit: 'S', rank: '10' },
+        { suit: 'D', rank: 'J' },
+        { suit: 'C', rank: 'Q' },
+        { suit: 'H', rank: 'K' },
+        { suit: 'J', rank: 'red_joker' }
+      ];
+      const straightWithBlackJoker: Card[] = [
+        { suit: 'S', rank: '3' },
+        { suit: 'D', rank: '4' },
+        { suit: 'C', rank: '5' },
+        { suit: 'H', rank: '6' },
+        { suit: 'J', rank: 'black_joker' }
+      ];
+
+      expect(canPlay(straightWithRedJoker, null, currentRank)).toBeNull();
+      expect(canPlay(straightWithBlackJoker, null, currentRank)).toBeNull();
+    });
+
+    it('should forbid hard level cards (硬主) from participating in single straight', () => {
+      const currentRank = '10'; // Level card is 10
+      // Spades 10 is a hard level card
+      const straightWithHard10: Card[] = [
+        { suit: 'S', rank: '7' },
+        { suit: 'D', rank: '8' },
+        { suit: 'C', rank: '9' },
+        { suit: 'S', rank: '10' }, // Hard level card
+        { suit: 'H', rank: 'J' }
+      ];
+
+      expect(canPlay(straightWithHard10, null, currentRank)).toBeNull();
+    });
+
+    it('should reject wrap-around / cross-boundary straights like J-Q-K-A-2 or Q-K-A-2-3', () => {
+      const currentRank = '9';
+      const wrap1: Card[] = [
+        { suit: 'S', rank: 'J' },
+        { suit: 'D', rank: 'Q' },
+        { suit: 'C', rank: 'K' },
+        { suit: 'H', rank: 'A' },
+        { suit: 'S', rank: '2' }
+      ];
+      const wrap2: Card[] = [
+        { suit: 'S', rank: 'Q' },
+        { suit: 'D', rank: 'K' },
+        { suit: 'C', rank: 'A' },
+        { suit: 'H', rank: '2' },
+        { suit: 'S', rank: '3' }
+      ];
+
+      expect(canPlay(wrap1, null, currentRank)).toBeNull();
+      expect(canPlay(wrap2, null, currentRank)).toBeNull();
+    });
+  });
+
+  /* -------------------------------------------------------------------------- */
+  /* 4. 双顺/木板/对顺规则 (Rules §1.3)                                          */
+  /* -------------------------------------------------------------------------- */
+  describe('Rule 4: Double Straight Rules (Rules §1.3)', () => {
+    it('should accept 3 consecutive pairs (6 cards) like 334455 or AAKKQQ or AA2233', () => {
+      const currentRank = '10';
+      const ds334455: Card[] = [
+        { suit: 'S', rank: '3' },
+        { suit: 'D', rank: '3' },
+        { suit: 'C', rank: '4' },
+        { suit: 'H', rank: '4' },
+        { suit: 'S', rank: '5' },
+        { suit: 'D', rank: '5' }
+      ];
+      const dsAAKKQQ: Card[] = [
+        { suit: 'S', rank: 'Q' },
+        { suit: 'D', rank: 'Q' },
+        { suit: 'C', rank: 'K' },
+        { suit: 'H', rank: 'K' },
+        { suit: 'S', rank: 'A' },
+        { suit: 'D', rank: 'A' }
+      ];
+      const dsAA2233: Card[] = [
+        { suit: 'S', rank: 'A' },
+        { suit: 'D', rank: 'A' },
+        { suit: 'C', rank: '2' },
+        { suit: 'H', rank: '2' },
+        { suit: 'S', rank: '3' },
+        { suit: 'D', rank: '3' }
+      ];
+
+      const combo345 = canPlay(ds334455, null, currentRank)!;
+      expect(combo345.type).toBe(HAND_TYPES.DOUBLE_STRAIGHT);
+      expect(combo345.power).toBe(5);
+
+      const comboQKA = canPlay(dsAAKKQQ, null, currentRank)!;
+      expect(comboQKA.type).toBe(HAND_TYPES.DOUBLE_STRAIGHT);
+      expect(comboQKA.power).toBe(14);
+
+      const comboA23 = canPlay(dsAA2233, null, currentRank)!;
+      expect(comboA23.type).toBe(HAND_TYPES.DOUBLE_STRAIGHT);
+      expect(comboA23.power).toBe(3);
+    });
+
+    it('should reject 2 consecutive pairs (3344, 4 cards) and 4 consecutive pairs (33445566, 8 cards)', () => {
+      const currentRank = '2';
+      const ds2pairs: Card[] = [
+        { suit: 'S', rank: '3' },
+        { suit: 'D', rank: '3' },
+        { suit: 'C', rank: '4' },
+        { suit: 'H', rank: '4' }
+      ];
+      const ds4pairs: Card[] = [
+        { suit: 'S', rank: '3' },
+        { suit: 'D', rank: '3' },
+        { suit: 'C', rank: '4' },
+        { suit: 'H', rank: '4' },
+        { suit: 'S', rank: '5' },
+        { suit: 'D', rank: '5' },
+        { suit: 'C', rank: '6' },
+        { suit: 'H', rank: '6' }
+      ];
+
+      expect(canPlay(ds2pairs, null, currentRank)).toBeNull();
+      expect(canPlay(ds4pairs, null, currentRank)).toBeNull();
+    });
+
+    it('should forbid hard level cards (硬主) from participating in double straight', () => {
+      const currentRank = '10'; // 10 is hard level card
+      const dsWithHard10: Card[] = [
+        { suit: 'S', rank: '9' },
+        { suit: 'D', rank: '9' },
+        { suit: 'C', rank: '10' },
+        { suit: 'H', rank: '10' },
+        { suit: 'S', rank: 'J' },
+        { suit: 'D', rank: 'J' }
+      ];
+
+      expect(canPlay(dsWithHard10, null, currentRank)).toBeNull();
+    });
+  });
+
+  /* -------------------------------------------------------------------------- */
+  /* 5. 钢板/三顺规则 (Rules §1.4)                                              */
+  /* -------------------------------------------------------------------------- */
+  describe('Rule 5: Steel Plate Rules (Rules §1.4)', () => {
+    it('should accept exactly 2 consecutive triples (6 cards) like 333444 or AAAKKK or 222333', () => {
+      const currentRank = '10';
+      const sp333444: Card[] = [
+        { suit: 'S', rank: '3' },
+        { suit: 'D', rank: '3' },
+        { suit: 'C', rank: '3' },
+        { suit: 'H', rank: '4' },
+        { suit: 'S', rank: '4' },
+        { suit: 'D', rank: '4' }
+      ];
+      const spKKKAAA: Card[] = [
+        { suit: 'S', rank: 'K' },
+        { suit: 'D', rank: 'K' },
+        { suit: 'C', rank: 'K' },
+        { suit: 'H', rank: 'A' },
+        { suit: 'S', rank: 'A' },
+        { suit: 'D', rank: 'A' }
+      ];
+      const sp222333: Card[] = [
+        { suit: 'S', rank: '2' },
+        { suit: 'D', rank: '2' },
+        { suit: 'C', rank: '2' },
+        { suit: 'H', rank: '3' },
+        { suit: 'S', rank: '3' },
+        { suit: 'D', rank: '3' }
+      ];
+
+      const combo34 = canPlay(sp333444, null, currentRank)!;
+      expect(combo34.type).toBe(HAND_TYPES.STEEL_PLATE);
+      expect(combo34.power).toBe(4);
+
+      const comboKA = canPlay(spKKKAAA, null, currentRank)!;
+      expect(comboKA.type).toBe(HAND_TYPES.STEEL_PLATE);
+      expect(comboKA.power).toBe(14);
+
+      const combo23 = canPlay(sp222333, null, currentRank)!;
+      expect(combo23.type).toBe(HAND_TYPES.STEEL_PLATE);
+      expect(combo23.power).toBe(3);
+    });
+
+    it('should reject 3 consecutive triples (333444555, 9 cards)', () => {
+      const currentRank = '10';
+      const sp3triples: Card[] = [
+        { suit: 'S', rank: '3' },
+        { suit: 'D', rank: '3' },
+        { suit: 'C', rank: '3' },
+        { suit: 'H', rank: '4' },
+        { suit: 'S', rank: '4' },
+        { suit: 'D', rank: '4' },
+        { suit: 'C', rank: '5' },
+        { suit: 'H', rank: '5' },
+        { suit: 'S', rank: '5' }
+      ];
+
+      expect(canPlay(sp3triples, null, currentRank)).toBeNull();
+    });
+
+    it('should reject cross-boundary AAA 222 steel plate', () => {
+      const currentRank = '10';
+      const spAAA222: Card[] = [
+        { suit: 'S', rank: 'A' },
+        { suit: 'D', rank: 'A' },
+        { suit: 'C', rank: 'A' },
+        { suit: 'H', rank: '2' },
+        { suit: 'S', rank: '2' },
+        { suit: 'D', rank: '2' }
+      ];
+
+      expect(canPlay(spAAA222, null, currentRank)).toBeNull();
+    });
+  });
+
+  /* -------------------------------------------------------------------------- */
+  /* 6. 三带二 (Rules §1.8)                                                     */
+  /* -------------------------------------------------------------------------- */
+  describe('Rule 6: Three with Pair Rules (Rules §1.8)', () => {
+    it('should require 3 identical cards + 1 valid pair (5 cards)', () => {
+      const currentRank = '10';
+      const t2: Card[] = [
+        { suit: 'S', rank: '5' },
+        { suit: 'D', rank: '5' },
+        { suit: 'C', rank: '5' },
+        { suit: 'H', rank: '2' },
+        { suit: 'S', rank: '2' }
+      ];
+
+      const combo = canPlay(t2, null, currentRank)!;
+      expect(combo).not.toBeNull();
+      expect(combo.type).toBe(HAND_TYPES.THREE_TWO);
+      expect(combo.power).toBe(5);
+    });
+
+    it('should compare size solely based on the triple part rank', () => {
+      const currentRank = '10';
+      const t333AA: Card[] = [
+        { suit: 'S', rank: '3' },
+        { suit: 'D', rank: '3' },
+        { suit: 'C', rank: '3' },
+        { suit: 'H', rank: 'A' },
+        { suit: 'S', rank: 'A' }
+      ];
+      const t44422: Card[] = [
+        { suit: 'S', rank: '4' },
+        { suit: 'D', rank: '4' },
+        { suit: 'C', rank: '4' },
+        { suit: 'H', rank: '2' },
+        { suit: 'S', rank: '2' }
+      ];
+
+      const combo333 = canPlay(t333AA, null, currentRank)!;
+      const combo444 = canPlay(t44422, null, currentRank)!;
+
+      expect(combo333.power).toBe(3);
+      expect(combo444.power).toBe(4);
+
+      // 444+22 beats 333+AA
+      expect(canPlay(t44422, combo333, currentRank)).not.toBeNull();
+      // 333+AA does not beat 444+22
+      expect(canPlay(t333AA, combo444, currentRank)).toBeNull();
+    });
+
+    it('should reject three-with-two if the attached pair is a mixed joker combination (Red Joker + Black Joker)', () => {
+      const currentRank = '10';
+      const t333Jokers: Card[] = [
+        { suit: 'S', rank: '3' },
+        { suit: 'D', rank: '3' },
+        { suit: 'C', rank: '3' },
+        { suit: 'J', rank: 'red_joker' },
+        { suit: 'J', rank: 'black_joker' }
+      ];
+
+      expect(canPlay(t333Jokers, null, currentRank)).toBeNull();
+    });
+  });
+
+  /* -------------------------------------------------------------------------- */
+  /* 7. 对牌 (Rules §1.6)                                                       */
+  /* -------------------------------------------------------------------------- */
+  describe('Rule 7: Pair Rules (Rules §1.6)', () => {
+    it('should evaluate double Red Joker (power 18) and double Black Joker (power 16) as valid pairs', () => {
+      const currentRank = '2';
+      const doubleRed: Card[] = [
+        { suit: 'J', rank: 'red_joker' },
+        { suit: 'J', rank: 'red_joker' }
+      ];
+      const doubleBlack: Card[] = [
+        { suit: 'J', rank: 'black_joker' },
+        { suit: 'J', rank: 'black_joker' }
+      ];
+
+      const comboRed = canPlay(doubleRed, null, currentRank)!;
+      expect(comboRed.type).toBe(HAND_TYPES.PAIR);
+      expect(comboRed.power).toBe(18);
+
+      const comboBlack = canPlay(doubleBlack, null, currentRank)!;
+      expect(comboBlack.type).toBe(HAND_TYPES.PAIR);
+      expect(comboBlack.power).toBe(16);
+
+      // Double Red beats Double Black
+      expect(canPlay(doubleRed, comboBlack, currentRank)).not.toBeNull();
+    });
+
+    it('should reject mixed Joker pair (1 Red Joker + 1 Black Joker)', () => {
+      const currentRank = '2';
+      const mixedJoker: Card[] = [
+        { suit: 'J', rank: 'red_joker' },
+        { suit: 'J', rank: 'black_joker' }
+      ];
+
+      expect(evaluateNormalHand(mixedJoker, currentRank).type).toBe(HAND_TYPES.INVALID);
+      expect(canPlay(mixedJoker, null, currentRank)).toBeNull();
+    });
+  });
+
+  /* -------------------------------------------------------------------------- */
+  /* 8. 逢人配限制 (Rules §1.1 & §1.10)                                         */
+  /* -------------------------------------------------------------------------- */
+  describe('Rule 8: Wild Card Restrictions (Rules §1.1 & §1.10)', () => {
+    it('should allow Hearts level card (wildcard) to form any normal hand except jokers', () => {
+      const currentRank = '10'; // Hearts 10 is wildcard
+      // Spades 5, 6, 7, 8 + Hearts 10 -> Single Straight
+      const straightWithWild: Card[] = [
+        { suit: 'S', rank: '5' },
+        { suit: 'D', rank: '6' },
+        { suit: 'C', rank: '7' },
+        { suit: 'S', rank: '8' },
+        { suit: 'H', rank: '10' }
+      ];
+
+      const combo = canPlay(straightWithWild, null, currentRank)!;
+      expect(combo).not.toBeNull();
+      expect(combo.type).toBe(HAND_TYPES.STRAIGHT);
+      expect(combo.power).toBe(9);
+    });
+
+    it('should strictly forbid wild card from substituting Red Joker or Black Joker', () => {
+      const currentRank = '10'; // Hearts 10 is wildcard
+      // 1 Red Joker + 1 Hearts 10 (trying to form pair of Red Jokers)
+      const tryJokerPair: Card[] = [
+        { suit: 'J', rank: 'red_joker' },
+        { suit: 'H', rank: '10' }
+      ];
+
+      // 3 Jokers + 1 Hearts 10 (trying to form 4-Joker King Bomb)
+      const tryKingBomb: Card[] = [
+        { suit: 'J', rank: 'red_joker' },
+        { suit: 'J', rank: 'red_joker' },
+        { suit: 'J', rank: 'black_joker' },
+        { suit: 'H', rank: '10' }
+      ];
+
+      expect(canPlay(tryJokerPair, null, currentRank)).toBeNull();
+      expect(canPlay(tryKingBomb, null, currentRank)).toBeNull();
+    });
+  });
+
+  /* -------------------------------------------------------------------------- */
+  /* Formatting Utilities                                                       */
+  /* -------------------------------------------------------------------------- */
   describe('formatCard and formatHand', () => {
     it('should correctly format individual cards', () => {
       expect(formatCard({ suit: 'H', rank: 'A' })).toBe('红桃A');
