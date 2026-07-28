@@ -463,6 +463,24 @@ describe('GameSession Integration and Flow Tests', () => {
       vi.useRealTimers();
     });
 
+    it('should NOT execute AI logic for human player when executeAILogic is invoked while isAI is false', () => {
+      const session = new GameSession();
+      session.phase = 'PLAYING';
+      session.currentPlayer = 0;
+      session.players[0].isAI = false;
+      session.playerHands[0] = [
+        { suit: 'S', rank: 'A' },
+        { suit: 'S', rank: 'K' }
+      ];
+
+      // Directly invoke executeAILogic while isAI is false
+      (session as any).executeAILogic();
+
+      // Hand count must NOT change and no card should be played automatically!
+      expect(session.playerHands[0].length).toBe(2);
+      expect(session.lastPlay).toBeNull();
+    });
+
     it('should reset takeover state (isAI = false) when startNextRound is called', () => {
       const session = new GameSession();
       session.initGame();
@@ -479,6 +497,7 @@ describe('GameSession Integration and Flow Tests', () => {
       // Takeover state should be reset
       expect(session.players[0].isAI).toBe(false);
     });
+
 
     it('should correctly upgrade from Q to A without triggering A-rank resolve and resetting to level 2', () => {
       const session = new GameSession();

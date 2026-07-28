@@ -596,6 +596,11 @@ export class GameSession extends EventEmitter {
   }
 
   private executeAILogic() {
+    // 防线：如果当前出牌玩家未开启托管 (isAI === false)，严禁自动替玩家出牌！
+    if (!this.players[this.currentPlayer] || !this.players[this.currentPlayer].isAI) {
+      return;
+    }
+
     // 构造 AI 只读状态镜像
     const view: PlayerStateView = {
       hand: this.playerHands[this.currentPlayer],
@@ -839,6 +844,7 @@ export class GameSession extends EventEmitter {
 
     // 重置并开始下一局
     this.finishedPlayers = [];
+    this.players[0].isAI = false; // 确保新局自动还原为手动控制
 
     // 校准当前局的级牌为上一局赢家的级牌（除非发生退级）
     const lastWinner = this.lastRoundFinishedPlayers[0];
