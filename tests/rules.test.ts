@@ -222,7 +222,7 @@ describe('Guandan Rules Unit Tests', () => {
         { suit: 'H', rank: '8' },
         { suit: 'H', rank: '8' },
         { suit: 'H', rank: '10' }, // Wildcard 1
-        { suit: 'H', rank: '10' }  // Wildcard 2
+        { suit: 'H', rank: '10' } // Wildcard 2
       ];
 
       const combo10 = canPlay(hand10, null, currentRank)!;
