@@ -280,12 +280,16 @@ export class GameSession extends EventEmitter {
     if (info.isDouble) {
       const j1 = this.countRedJokers(info.payers[0]);
       const j2 = this.countRedJokers(info.payers[1]);
-      if (j1 + j2 === 2) hasAntiTribute = true;
+      if (j1 === 2 || j2 === 2 || (j1 === 1 && j2 === 1)) hasAntiTribute = true;
     } else {
       if (this.countRedJokers(payer) === 2) hasAntiTribute = true;
     }
 
     if (hasAntiTribute) {
+      if (this.tributeInfo) {
+        (this.tributeInfo as any).resisted = true;
+      }
+      this.emit('tribute_resisted');
       this.emit('toast', '输家拥有一对红心大王，抗贡成功！免除本局进贡。');
       this.endTributePhase();
       return;
@@ -469,7 +473,12 @@ export class GameSession extends EventEmitter {
       }
     }
 
+    if (this.tributeInfo) {
+      this.tributeInfo.startingPlayer = startingPlayer;
+    }
+
     this.currentPlayer = startingPlayer;
+
     this.emit('tribute_finished', this.currentPlayer);
     this.emit('turn_started', this.currentPlayer, true, null);
 
@@ -545,8 +554,13 @@ export class GameSession extends EventEmitter {
       this.currentPlayer = (this.currentPlayer + 1) % 4;
     }
 
-    // 检查是否都过了一圈
-    if (this.passCount === 3) {
+    // 计算除赢家外，仍持牌活跃的玩家数
+    const activeOtherPlayers = [0, 1, 2, 3].filter(
+      (p) => p !== this.currentWinnerIndex && this.playerHands[p].length > 0
+    ).length;
+
+    // 检查是否全场都过牌了一轮
+    if (this.passCount >= Math.max(1, activeOtherPlayers)) {
       // 这一轮出牌结束，清空出牌区
       this.lastPlay = null;
       this.passCount = 0;
@@ -680,8 +694,8 @@ export class GameSession extends EventEmitter {
     const finalRankStr = this.finishedPlayers.map((p, i) => `${i + 1}. ${this.players[p].name}`).join('<br>');
     let settlement: SettlementType = 'US_UP_1';
 
-    // 只有在当前局级牌为 A (Level 14) 时，才触发过 A 判定与失败计数
-    if (this.currentRank === 'A') {
+    // 只要我方或敌方在打 A (Level 14)，即触发过 A 判定与失败计数
+    if (this.currentRank === 'A' || this.levelTeamA === 14 || this.levelTeamB === 14) {
       if (winTeamIdx === 0) {
         // 我方赢了本局
         if (this.levelTeamA === 14) {
