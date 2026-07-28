@@ -5,7 +5,8 @@
 
 import { Card, Combo, HandType, Suit, SettlementType, PlayerRemainingCards } from './types';
 import { GameSession } from './session';
-import { sortCards, isWildCard, getCardWeight, formatCard } from './rules';
+import { sortCards, isWildCard, getCardWeight, formatCard, canPlay } from './rules';
+
 import { aiFollowPlay } from './ai';
 
 export class DOMRenderer {
@@ -879,6 +880,33 @@ export class DOMRenderer {
         nameEl.textContent = this.session.players[p].name;
       }
     }
+  }
+
+  // 动态根据选中手牌更新出牌按钮 disabled 状态
+  public updatePlayButtonState() {
+    const playBtn = document.getElementById('btn-play') as HTMLButtonElement;
+    if (!playBtn) return;
+
+    const container = document.getElementById('player-cards-container');
+    if (!container) return;
+
+    const selectedEls = container.querySelectorAll('.card.selected');
+    if (selectedEls.length === 0) {
+      playBtn.disabled = true;
+      return;
+    }
+
+    const selectedCards: Card[] = [];
+    selectedEls.forEach((el) => {
+      const htmlEl = el as HTMLElement;
+      selectedCards.push({
+        suit: htmlEl.dataset.suit as Suit,
+        rank: htmlEl.dataset.rank || ''
+      });
+    });
+
+    const combo = canPlay(selectedCards, this.session.lastPlay, this.session.currentRank);
+    playBtn.disabled = !combo || combo.type === 'INVALID';
   }
 
   // 展开/收起日志面板

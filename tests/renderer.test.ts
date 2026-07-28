@@ -13,7 +13,7 @@ describe('DOMRenderer UI Rendering & Interaction Tests', () => {
     // 载入真实的 index.html DOM 结构进行视图交互测试
     const htmlPath = path.resolve('index.html');
     const htmlContent = fs.readFileSync(htmlPath, 'utf-8');
-    
+
     // 取出 <body> 内部的 HTML 节点，并过滤掉标签 script 避免模式加载错误
     let bodyContent = htmlContent.match(/<body>([\s\S]*)<\/body>/i)?.[1] || '';
     bodyContent = bodyContent.replace(/<script[\s\S]*?<\/script>/gi, '');
@@ -86,5 +86,94 @@ describe('DOMRenderer UI Rendering & Interaction Tests', () => {
     const toastItem = toastContainer!.querySelector('.toast');
     expect(toastItem).not.toBeNull();
     expect(toastItem!.textContent).toBe('出牌不符合规则！');
+  });
+
+  it('应该在用户勾选卡牌时，依据 canPlay 规则动态更新出牌按钮 (#btn-play) 的 disabled 状态', () => {
+    const playBtn = document.getElementById('btn-play') as HTMLButtonElement;
+    expect(playBtn).not.toBeNull();
+
+    session.phase = 'PLAYING';
+    session.currentPlayer = 0;
+    session.playerHands[0] = [
+      { suit: 'S', rank: '5' },
+      { suit: 'H', rank: '5' },
+      { suit: 'D', rank: 'K' }
+    ];
+
+    // 重新渲染玩家手牌 DOM
+    (renderer as any).renderAllHands(session.playerHands);
+
+    const cardElements = document.querySelectorAll('#player-cards-container .card');
+    expect(cardElements.length).toBe(3);
+
+    // 初始没有任何卡牌被选中 -> 出牌按钮为 disabled
+    renderer.updatePlayButtonState();
+    expect(playBtn.disabled).toBe(true);
+
+    // 模拟勾选一张 5 和一张 K (非合法牌型 5 + K)
+    (cardElements[0] as HTMLElement).classList.add('selected');
+    (cardElements[2] as HTMLElement).classList.add('selected');
+    renderer.updatePlayButtonState();
+
+    // 出牌按钮应维持 disabled (非合法牌型)
+    expect(playBtn.disabled).toBe(true);
+
+    // 改为勾选对 5 (5 + 5)
+    (cardElements[2] as HTMLElement).classList.remove('selected');
+    (cardElements[1] as HTMLElement).classList.add('selected');
+    renderer.updatePlayButtonState();
+
+    // 出牌按钮应解除禁用 (enabled)
+    expect(playBtn.disabled).toBe(false);
+  });
+
+  it('应该在用户在非法选择下强行点击出牌时展示 Toast 错误提示', () => {
+    const playBtn = document.getElementById('btn-play') as HTMLButtonElement;
+    const toastContainer = document.getElementById('toast-container');
+    expect(playBtn).not.toBeNull();
+    expect(toastContainer).not.toBeNull();
+
+    session.phase = 'PLAYING';
+    session.currentPlayer = 0;
+    session.playerHands[0] = [
+      { suit: 'S', rank: '3' },
+      { suit: 'H', rank: '7' }
+    ];
+
+    (renderer as any).renderAllHands(session.playerHands);
+
+    // 勾选非合法的两张散牌 3 和 7
+    const cardElements = document.querySelectorAll('#player-cards-container .card');
+    (cardElements[0] as HTMLElement).classList.add('selected');
+    (cardElements[1] as HTMLElement).classList.add('selected');
+
+    // 强行点击出牌
+    playBtn.click();
+
+    // 应该弹出规则不符合的 Toast
+    const toast = toastContainer!.querySelector('.toast');
+    expect(toast).not.toBeNull();
+    expect(toast!.textContent).toContain('不符合规则');
+  });
+
+  it('应该在触发 remaining_cards_logged 事件时成功在 DOM 日志面板中注入各玩家未出完手牌节点', () => {
+    const logContentList = document.getElementById('log-content-list');
+    expect(logContentList).not.toBeNull();
+
+    session.emit('remaining_cards_logged', [
+      {
+        playerIndex: 0,
+        playerName: '你 (玩家)',
+        cards: [{ suit: 'S', rank: 'A' }],
+        cardCount: 1,
+        formattedCards: '黑桃A'
+      },
+      { playerIndex: 1, playerName: '对手1 (AI)', cards: [], cardCount: 0, formattedCards: '无' }
+    ]);
+
+    const remainingLogs = logContentList!.querySelectorAll('.log-item.round-end');
+    expect(remainingLogs.length).toBeGreaterThan(0);
+    expect(logContentList!.textContent).toContain('🂠 【单局结算 - 玩家未出完手牌】');
+    expect(logContentList!.textContent).toContain('你 (玩家): 剩余 1 张 [黑桃A]');
   });
 });
