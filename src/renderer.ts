@@ -197,7 +197,7 @@ export class DOMRenderer {
       }
     });
 
-    document.addEventListener('mouseover', (e: MouseEvent) => {
+    container.addEventListener('mouseover', (e: MouseEvent) => {
       if (!this.isDragging) return;
       const cardEl = (e.target as HTMLElement).closest('.card') as HTMLElement;
       if (cardEl && !cardEl.classList.contains('back') && cardEl.parentNode === container) {
@@ -206,6 +206,10 @@ export class DOMRenderer {
           this.draggedCards.add(cardEl);
         }
       }
+    });
+
+    container.addEventListener('mouseleave', () => {
+      this.isDragging = false;
     });
 
     document.addEventListener('mouseup', () => {
