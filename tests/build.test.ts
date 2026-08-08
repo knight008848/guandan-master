@@ -1,8 +1,16 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
+import { execSync } from 'child_process';
 
 describe('Build Output Integration Tests', () => {
+  beforeAll(() => {
+    const distPath = path.resolve('dist');
+    if (!fs.existsSync(distPath)) {
+      execSync('npm run build');
+    }
+  });
+
   it('should verify dist directory output contains index.html and JS/CSS assets', () => {
     const distPath = path.resolve('dist');
     const indexPath = path.join(distPath, 'index.html');
