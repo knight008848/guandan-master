@@ -3,6 +3,7 @@
 为了将当前的开源项目完美对齐我们设计的 PRD 与系统架构，以下是接下来的开发任务清单：
 
 ## 🚀 已完成事项 (Completed)
+
 - [x] 将 PRD 文档 ([prd.md](file:///c:/Users/xx/.gemini/antigravity-ide/scratch/guandan-master/docs/prd.md)) 归档至代码仓库中
 - [x] 将架构设计文档 ([architecture.md](file:///c:/Users/xx/.gemini/antigravity-ide/scratch/guandan-master/docs/architecture.md)) 归档至代码仓库中
 - [x] 配置 GitHub Pages 部署路径基准并编写 GitHub Actions 自动部署流水线
@@ -24,6 +25,7 @@
 ---
 
 ## 🤖 自适应与高级 AI 智能算法 (Advanced & Adaptive AI Algorithms) [💡 下一步重点方向]
+
 - [ ] **自适应 AI 决策引擎**：
   - 在 `src/ai.ts` 中实现基于启发式搜索与简化蒙特卡洛树搜索（MCTS）的算法，替代简单的规则树决策。
   - **动态记牌与概率推理**：能够实时记忆场上已出的王牌、主牌数量，并对其他玩家手中可能剩余的高权重牌、炸弹概率分布进行动态推算，基于概率调整出牌激进程度。
@@ -34,6 +36,7 @@
 ---
 
 ## 🎵 音效与多媒体体验 (Audio & UX)
+
 - [ ] **音效文件导入与配置**：
   - 寻找或录制适合的卡牌音效（发牌声、出牌声、PASS声、炸弹爆炸声、结算背景音乐）。
 - [ ] **音效引擎实现**：
@@ -44,6 +47,7 @@
 ---
 
 ## 🎨 牌面与背景个性化配置 (Card Skins & Background Themes)
+
 - [ ] **牌面与牌背图案修改与自定义**：
   - 设计卡牌资源接口，支持切换不同牌面样式（如现代矢量、经典扑克底纹）和不同牌背图案（如墨绿尊贵、中国红、科幻流光）。
 - [ ] **游戏背景皮肤切换**：
@@ -52,6 +56,7 @@
 ---
 
 ## 🛡 代码质量与工程化规范 (Code Quality & Linting)
+
 - [ ] **集成 ESLint 与 Prettier**：
   - 配置 ESLint（基于 `typescript-eslint`）对 TypeScript 进行静态校验，排查多余变量与隐式漏洞。
   - 配置 Prettier 规范代码缩进与符号，确保协作时的 Git 提交无格式干扰。
@@ -63,6 +68,7 @@
 ---
 
 ## 🧪 自动化测试与质量保障 (Testing & Quality Assurance)
+
 - [ ] **测试框架演进：集成 JSDOM/Happy DOM 内存仿真环境**：
   - 引入 `jsdom` 或 `happy-dom` 到 Vitest 测试配置中。
   - 编写针对 `DOMRenderer` 视图层的单元测试，直接验证 DOM 节点的渲染（如 A1/A2/A3 级别展示、弹窗定位与控制面板状态等）。
