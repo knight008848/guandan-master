@@ -44,9 +44,14 @@
 
 - **严禁擅自直接 Push (No Direct Push Without Approval)**：
   - AI Agent 或开发人员在完成本地代码开发与 Commit 之后，**严禁擅自直接向远程仓库（GitHub）或 `main` 主分支执行 `git push` 操作**。
-- **结构化 Code Review 审核流程 (Structured Code Review Flow)**：
-  - 在发起推送之前，必须向项目审核人（User Reviewer）展示结构化的 **Code Review 审查报告**，包含：
-    1. **变更 Diff 摘要 (Change Diff Summary)**：修改的文件清单与影响范围；
-    2. **质量与测试结果 (Quality & Test Status)**：TypeScript 校验、ESLint 规范与全量单元测试通过结果；
-    3. **安全性与性能评估 (Security & Performance Audit)**：包含内存防泄露 (`tf.tidy()`) 与 3 级 Fallback 确认。
-  - **显式批准方可推送 (Explicit Approval Required)**：仅在项目审核人显式确认批准（如回复“Approve”、“同意”或“允许 Push”）之后，方可执行 `git push` 命令将代码推送到远程仓库。
+- **调用 Code Review Subagent 独立审计 (Code Review Subagent Invocation)**：
+  - 在每次发起 `git push` 命令之前，必须先调用专门定义的 **`code-review-inspector` Subagent** 以第三方审查视角执行全方位深度代码审计。
+  - **审查范围**：
+    1. **内存与显存防泄露**：检查 TensorFlow.js 代码是否 100% 作用域包裹在 `tf.tidy()` 或手动 `dispose()` 中。
+    2. **静态与类型安全**：检查 `npx tsc --noEmit` 0 错误与 ESLint / Stylelint 0 警告。
+    3. **降级防护网**：检查三级 Fallback 降级在断网/网络异常下的 0ms 拦截能力。
+    4. **原子性 Commit 与测试覆盖率**：检查全量单元测试 100% 绿灯且覆盖率合格。
+- **审计报告归档 (Report Archiving)**：
+  - 每次生成的 Code Review 报告必须自动归档存储至 [`.agents/reviews/`](file:///d:/Repos/guandan-master/.agents/reviews/) 目录下（格式为 `CR-YYYYMMDD-HHMMSS.md`），作为项目的永久代码质量审计文档。
+- **显式批准方可推送 (Explicit Approval Required)**：
+  - 呈现归档的 Code Review 报告并由项目审核人显式确认批准（回复“Approve”、“同意”或“允许 Push”）之后，方可执行 `git push` 命令推送到远程仓库。
