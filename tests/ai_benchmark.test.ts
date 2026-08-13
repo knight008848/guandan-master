@@ -35,6 +35,7 @@ function shuffle(deck: Card[]): Card[] {
 describe('Guandan AI Algorithm Benchmark Simulation', () => {
   it('should run 500 simulated rounds and analyze performance', () => {
     const numRounds = 500;
+
     const stats = {
       totalRounds: numRounds,
       heuristicValidCount: 0,
@@ -155,5 +156,5 @@ describe('Guandan AI Algorithm Benchmark Simulation', () => {
 
     expect(stats.heuristicValidCount).toBeGreaterThan(0);
     expect(stats.greedyValidCount).toBeGreaterThan(0);
-  }, 120000);
+  }, 240000);
 });

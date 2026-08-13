@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { Card, PlayerStateView } from '../src/types';
 import { aiChoosePlay, aiFollowPlay } from '../src/ai';
 import { extractCardGroups } from '../src/ai/ai_grouper';
-import { HAND_TYPES } from '../src/rules';
+import { HAND_TYPES, canPlay } from '../src/rules';
 
 describe('Guandan AI Unit Tests', () => {
   describe('extractCardGroups', () => {
@@ -74,6 +74,36 @@ describe('Guandan AI Unit Tests', () => {
       const pairOfThrees = groups.pairs.find((p) => p.some((c) => c.rank === '3'));
       expect(pairOfThrees).toBeDefined();
       expect(pairOfThrees?.length).toBe(2);
+    });
+
+    it('should fill wildcard suit and set isSubstituted in extracted straight flushes so they can be played by canPlay', () => {
+      // currentRank = '10'
+      // Hand: Spades 3, Spades 4, Spades 5, Spades 6 + Hearts 10 (wildcard)
+      const hand: Card[] = [
+        { suit: 'S', rank: '3' },
+        { suit: 'S', rank: '4' },
+        { suit: 'S', rank: '5' },
+        { suit: 'S', rank: '6' },
+        { suit: 'H', rank: '10' } // Wildcard
+      ];
+
+      const groups = extractCardGroups(hand, '10');
+      const sfBomb = groups.bombs.find((b) => b.length === 5);
+      expect(sfBomb).toBeDefined();
+
+      // Check that substituted wildcard in sfBomb has suit 'S' and isSubstituted: true
+      const wildCardSub = sfBomb!.find((c) => c.isSubstituted || (c.original && isWildCard(c.original, '10')));
+      expect(wildCardSub).toBeDefined();
+      expect(wildCardSub?.suit).toBe('S');
+      expect(wildCardSub?.isSubstituted).toBe(true);
+
+      // Verify canPlay recognizes it as a straight flush
+      const combo = canPlay(sfBomb!, null, '10');
+      expect(combo).not.toBeNull();
+      expect(combo?.type).toBe(HAND_TYPES.BOMB);
+      expect(combo?.name).toBe('同花顺');
+      expect(combo?.power).toBeGreaterThanOrEqual(557);
+      expect(combo?.power).toBeLessThanOrEqual(564);
     });
   });
 
@@ -164,6 +194,147 @@ describe('Guandan AI Unit Tests', () => {
       expect(play).not.toBeNull();
       expect(play?.length).toBe(1);
       expect(play?.[0].rank).toBe('A');
+    });
+
+    it('should extract pair of jokers only when player has 2 identical jokers (2 red jokers or 2 black jokers)', () => {
+      const handRedBlack: Card[] = [
+        { suit: 'J', rank: 'red_joker' },
+        { suit: 'J', rank: 'black_joker' },
+        { suit: 'S', rank: '5' }
+      ];
+
+      const groupsRedBlack = extractCardGroups(handRedBlack, '2');
+      // 1 red + 1 black should NOT form a pair
+      expect(groupsRedBlack.pairs.length).toBe(0);
+      expect(groupsRedBlack.singles.some((c) => c.rank === 'red_joker')).toBe(true);
+      expect(groupsRedBlack.singles.some((c) => c.rank === 'black_joker')).toBe(true);
+
+      const handDoubleRed: Card[] = [
+        { suit: 'J', rank: 'red_joker' },
+        { suit: 'J', rank: 'red_joker' },
+        { suit: 'S', rank: '5' }
+      ];
+      const groupsDoubleRed = extractCardGroups(handDoubleRed, '2');
+      expect(groupsDoubleRed.pairs.length).toBe(1);
+      expect(groupsDoubleRed.pairs[0].length).toBe(2);
+      expect(groupsDoubleRed.pairs[0].every((c) => c.rank === 'red_joker')).toBe(true);
+
+      const handDoubleBlack: Card[] = [
+        { suit: 'J', rank: 'black_joker' },
+        { suit: 'J', rank: 'black_joker' },
+        { suit: 'S', rank: '5' }
+      ];
+      const groupsDoubleBlack = extractCardGroups(handDoubleBlack, '2');
+      expect(groupsDoubleBlack.pairs.length).toBe(1);
+      expect(groupsDoubleBlack.pairs[0].length).toBe(2);
+      expect(groupsDoubleBlack.pairs[0].every((c) => c.rank === 'black_joker')).toBe(true);
+    });
+
+    it('should play single Joker in a timely manner to gain control against high opponent card', () => {
+      const view: PlayerStateView = {
+        hand: [
+          { suit: 'S', rank: '5' },
+          { suit: 'D', rank: '6' },
+          { suit: 'J', rank: 'red_joker' }
+        ],
+        lastPlay: {
+          type: HAND_TYPES.SINGLE,
+          power: 14, // Opponent played Single Ace
+          cardCount: 1,
+          playerIndex: 1
+        },
+        currentRank: '2',
+        myIndex: 0,
+        currentWinnerIndex: 1,
+        opponentCardCounts: [5, 5, 5, 5]
+      };
+
+      const play = aiChoosePlay(view);
+      expect(play).not.toBeNull();
+      expect(play?.length).toBe(1);
+      expect(play?.[0].rank).toBe('red_joker');
+    });
+
+    it('should play pair of Jokers in a timely manner to gain control against high opponent pair', () => {
+      const view: PlayerStateView = {
+        hand: [
+          { suit: 'S', rank: '5' },
+          { suit: 'D', rank: '5' },
+          { suit: 'J', rank: 'red_joker' },
+          { suit: 'J', rank: 'red_joker' }
+        ],
+        lastPlay: {
+          type: HAND_TYPES.PAIR,
+          power: 13, // Opponent played Pair of Kings
+          cardCount: 2,
+          playerIndex: 1
+        },
+        currentRank: '2',
+        myIndex: 0,
+        currentWinnerIndex: 1,
+        opponentCardCounts: [5, 5, 5, 5]
+      };
+
+      const play = aiChoosePlay(view);
+      expect(play).not.toBeNull();
+      expect(play?.length).toBe(2);
+      expect(play?.every((c) => c.rank === 'red_joker')).toBe(true);
+    });
+
+    it('should preserve King Bomb (4 Jokers) when opponent plays small cards, and use it against big bomb', () => {
+      // 1. Retention test: Opponent plays small single 3
+      const viewSmall: PlayerStateView = {
+        hand: [
+          { suit: 'S', rank: '8' },
+          { suit: 'J', rank: 'red_joker' },
+          { suit: 'J', rank: 'red_joker' },
+          { suit: 'J', rank: 'black_joker' },
+          { suit: 'J', rank: 'black_joker' } // 4 Jokers
+        ],
+        lastPlay: {
+          type: HAND_TYPES.SINGLE,
+          power: 3, // Single 3
+          cardCount: 1,
+          playerIndex: 1
+        },
+        currentRank: '2',
+        myIndex: 0,
+        currentWinnerIndex: 1,
+        opponentCardCounts: [10, 10, 10, 10]
+      };
+
+      const playSmall = aiChoosePlay(viewSmall);
+      // AI should play single 8, preserving King Bomb intact
+      expect(playSmall).not.toBeNull();
+      expect(playSmall?.length).toBe(1);
+      expect(playSmall?.[0].rank).toBe('8');
+
+      // 2. Interception test: Opponent plays 5-card Bomb
+      const viewBomb: PlayerStateView = {
+        hand: [
+          { suit: 'S', rank: '8' },
+          { suit: 'J', rank: 'red_joker' },
+          { suit: 'J', rank: 'red_joker' },
+          { suit: 'J', rank: 'black_joker' },
+          { suit: 'J', rank: 'black_joker' } // 4 Jokers
+        ],
+        lastPlay: {
+          type: HAND_TYPES.BOMB,
+          power: 204, // 5-card bomb of 4s
+          cardCount: 5,
+          playerIndex: 1
+        },
+        currentRank: '2',
+        myIndex: 0,
+        currentWinnerIndex: 1,
+        opponentCardCounts: [5, 5, 5, 5]
+      };
+
+      const playBomb = aiChoosePlay(viewBomb);
+      // AI should play King Bomb (4 Jokers) to gain control!
+      expect(playBomb).not.toBeNull();
+      expect(playBomb?.length).toBe(4);
+      expect(playBomb?.filter((c) => c.rank === 'red_joker' || c.rank === 'black_joker').length).toBe(4);
     });
   });
 });

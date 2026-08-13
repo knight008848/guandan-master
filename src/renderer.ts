@@ -3,9 +3,10 @@
  * 纯视图层，通过监听 GameSession 事件进行 UI 绘制及特效呈现
  */
 
-import { Card, Combo, HandType, Suit, SettlementType } from './types';
+import { Card, Combo, HandType, Suit, SettlementType, PlayerRemainingCards } from './types';
 import { GameSession } from './session';
-import { sortCards, isWildCard, getCardWeight } from './rules';
+import { sortCards, isWildCard, getCardWeight, formatCard, canPlay } from './rules';
+
 import { aiFollowPlay } from './ai';
 
 export class DOMRenderer {
@@ -166,6 +167,14 @@ export class DOMRenderer {
       }
     );
 
+    this.session.on('remaining_cards_logged', (logs: PlayerRemainingCards[]) => {
+      this.addGameLog('🂠 【单局结算 - 玩家未出完手牌】', 'round-end');
+      logs.forEach((item) => {
+        const statusText = item.cardCount === 0 ? '已出完 (0张)' : `剩余 ${item.cardCount} 张 [${item.formattedCards}]`;
+        this.addGameLog(`${item.playerName}: ${statusText}`, 'round-end');
+      });
+    });
+
     this.session.on('toast', (msg: string) => {
       this.showToast(msg);
     });
@@ -188,7 +197,7 @@ export class DOMRenderer {
       }
     });
 
-    document.addEventListener('mouseover', (e: MouseEvent) => {
+    container.addEventListener('mouseover', (e: MouseEvent) => {
       if (!this.isDragging) return;
       const cardEl = (e.target as HTMLElement).closest('.card') as HTMLElement;
       if (cardEl && !cardEl.classList.contains('back') && cardEl.parentNode === container) {
@@ -197,6 +206,10 @@ export class DOMRenderer {
           this.draggedCards.add(cardEl);
         }
       }
+    });
+
+    container.addEventListener('mouseleave', () => {
+      this.isDragging = false;
     });
 
     document.addEventListener('mouseup', () => {
@@ -845,10 +858,7 @@ export class DOMRenderer {
   }
 
   private getCardName(card: Card): string {
-    const suitNames: Record<Suit, string> = { H: '红桃', D: '方块', C: '梅花', S: '黑桃', J: '' };
-    if (card.rank === 'red_joker') return '大王';
-    if (card.rank === 'black_joker') return '小王';
-    return suitNames[card.suit] + card.rank;
+    return formatCard(card);
   }
 
   private getHandTypeName(type: HandType): string {
@@ -876,16 +886,54 @@ export class DOMRenderer {
     }
   }
 
+  // 动态根据选中手牌更新出牌按钮 disabled 状态
+  public updatePlayButtonState() {
+    const playBtn = document.getElementById('btn-play') as HTMLButtonElement;
+    if (!playBtn) return;
+
+    const container = document.getElementById('player-cards-container');
+    if (!container) return;
+
+    const selectedEls = container.querySelectorAll('.card.selected');
+    if (selectedEls.length === 0) {
+      playBtn.disabled = true;
+      return;
+    }
+
+    const selectedCards: Card[] = [];
+    selectedEls.forEach((el) => {
+      const htmlEl = el as HTMLElement;
+      selectedCards.push({
+        suit: htmlEl.dataset.suit as Suit,
+        rank: htmlEl.dataset.rank || ''
+      });
+    });
+
+    const combo = canPlay(selectedCards, this.session.lastPlay, this.session.currentRank);
+    playBtn.disabled = !combo || combo.type === 'INVALID';
+  }
+
   // 展开/收起日志面板
   private toggleLogPanel() {
     const panel = document.getElementById('log-panel');
     panel?.classList.toggle('show');
   }
 
+  private static readonly MAX_LOG_LINES = 1000;
+
   // 向日志面板写入单条记录
   private addGameLog(msg: string, type: 'info' | 'tribute' | 'round-end' = 'info') {
     const container = document.getElementById('log-content-list');
     if (container) {
+      // 保持日志容量上限为 1000 行，多余时移除最早的日志节点，防止 DOM 内存泄漏
+      while (container.children.length >= DOMRenderer.MAX_LOG_LINES) {
+        if (container.firstChild) {
+          container.removeChild(container.firstChild);
+        } else {
+          break;
+        }
+      }
+
       const item = document.createElement('div');
       item.className = `log-item ${type}`;
 

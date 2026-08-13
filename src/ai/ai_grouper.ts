@@ -96,16 +96,27 @@ export function extractCardGroups(hand: Card[], currentRank: string): CardGroups
     suits.forEach((suit) => {
       let missingCount = 0;
       const matchedCards: Card[] = [];
+      const substitutedWilds: Card[] = [];
+      let wildIdx = 0;
       range.forEach((rank) => {
         const card = seqCleanHand.find((c) => c.suit === suit && c.rank === rank);
         if (card) {
           matchedCards.push(card);
         } else {
           missingCount++;
+          if (wildIdx < wilds.length) {
+            substitutedWilds.push({
+              suit: suit,
+              rank: rank,
+              isSubstituted: true,
+              original: wilds[wildIdx]
+            });
+            wildIdx++;
+          }
         }
       });
       if (missingCount <= wilds.length) {
-        result.bombs.push([...matchedCards, ...wilds.slice(0, missingCount)]);
+        result.bombs.push([...matchedCards, ...substitutedWilds]);
       }
     });
   });
@@ -242,10 +253,20 @@ export function extractCardGroups(hand: Card[], currentRank: string): CardGroups
     });
   }
 
-  // 王牌添加至单张列表
-  jokers.forEach((j) => {
-    allSingles.push(j);
-  });
+  // 9.5 王牌处理：若少于4张王，提取单王与对王；若为4张王，则专供天王炸，防盲目拆分
+  if (jokers.length < 4) {
+    jokers.forEach((j) => {
+      allSingles.push(j);
+    });
+    const redJokers = jokers.filter((c) => c.rank === 'red_joker');
+    const blackJokers = jokers.filter((c) => c.rank === 'black_joker');
+    if (redJokers.length >= 2) {
+      allPairs.push([redJokers[0], redJokers[1]]);
+    }
+    if (blackJokers.length >= 2) {
+      allPairs.push([blackJokers[0], blackJokers[1]]);
+    }
+  }
 
   // 逢人配自身可以作为单张，两个逢人配可以组成对子
   wilds.forEach((w) => {
@@ -258,9 +279,11 @@ export function extractCardGroups(hand: Card[], currentRank: string): CardGroups
   // 10. 三张与对子组合为 三带二 (ThreeTwo)
   const usedPairs = new Set<number>();
   allTriples.forEach((triple) => {
-    // 寻找无重合卡牌
+    // 寻找无重合卡牌（且避免把对王当作三带二的带牌）
     const freePairIdx = allPairs.findIndex((pair, pIdx) => {
       if (usedPairs.has(pIdx)) return false;
+      const isJokerPair = pair.every((c) => c.rank === 'red_joker' || c.rank === 'black_joker');
+      if (isJokerPair) return false;
       return !pair.some((pc) => triple.some((tc) => tc.suit === pc.suit && tc.rank === pc.rank));
     });
     if (freePairIdx !== -1) {

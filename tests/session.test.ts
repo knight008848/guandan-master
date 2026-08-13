@@ -155,7 +155,7 @@ describe('GameSession Integration and Flow Tests', () => {
   });
 
   describe('Anti-Tribute (抗贡)', () => {
-    it('should trigger anti-tribute when losers hold 2 red jokers', () => {
+    it('should trigger anti-tribute when losers hold 2 red jokers in single tribute', () => {
       const session = new GameSession();
       session.levelTeamA = 3;
       session.lastRoundFinishedPlayers = [0, 1, 2, 3]; // Player 3 is payer
@@ -182,6 +182,33 @@ describe('GameSession Integration and Flow Tests', () => {
       expect(session.phase).toBe('PLAYING');
       expect(toastMsg).toContain('抗贡成功');
       // Starts with previous round's head游 (player 0)
+      expect(session.currentPlayer).toBe(0);
+    });
+
+    it('should trigger anti-tribute when each loser holds 1 red joker in double tribute', () => {
+      const session = new GameSession();
+      session.levelTeamA = 3;
+      // Double upstream: 1st player 0, 2nd player 2. Payers/losers are player 1 and player 3
+      session.lastRoundFinishedPlayers = [0, 2, 1, 3];
+
+      // Player 1 has 1 Red Joker, Player 3 has 1 Red Joker
+      session.playerHands = [
+        [{ suit: 'S', rank: 'A' }],
+        [{ suit: 'J', rank: 'red_joker' }],
+        [{ suit: 'S', rank: 'J' }],
+        [{ suit: 'J', rank: 'red_joker' }]
+      ];
+
+      let toastMsg = '';
+      session.on('toast', (msg) => {
+        toastMsg = msg;
+      });
+
+      session.checkTribute();
+
+      // Should trigger anti-tribute immediately
+      expect(session.phase).toBe('PLAYING');
+      expect(toastMsg).toContain('抗贡成功');
       expect(session.currentPlayer).toBe(0);
     });
   });
@@ -436,6 +463,24 @@ describe('GameSession Integration and Flow Tests', () => {
       vi.useRealTimers();
     });
 
+    it('should NOT execute AI logic for human player when executeAILogic is invoked while isAI is false', () => {
+      const session = new GameSession();
+      session.phase = 'PLAYING';
+      session.currentPlayer = 0;
+      session.players[0].isAI = false;
+      session.playerHands[0] = [
+        { suit: 'S', rank: 'A' },
+        { suit: 'S', rank: 'K' }
+      ];
+
+      // Directly invoke executeAILogic while isAI is false
+      (session as any).executeAILogic();
+
+      // Hand count must NOT change and no card should be played automatically!
+      expect(session.playerHands[0].length).toBe(2);
+      expect(session.lastPlay).toBeNull();
+    });
+
     it('should reset takeover state (isAI = false) when startNextRound is called', () => {
       const session = new GameSession();
       session.initGame();
@@ -452,6 +497,7 @@ describe('GameSession Integration and Flow Tests', () => {
       // Takeover state should be reset
       expect(session.players[0].isAI).toBe(false);
     });
+
 
     it('should correctly upgrade from Q to A without triggering A-rank resolve and resetting to level 2', () => {
       const session = new GameSession();
@@ -525,6 +571,368 @@ describe('GameSession Integration and Flow Tests', () => {
 
       expect(session.levelTeamA).toBe(14);
       expect(session.currentRank).toBe('A');
+      expect(session.failCountTeamA).toBe(0);
+    });
+  });
+
+  describe('Remaining Cards Log on Round End (单局结束未出完手牌日志)', () => {
+    it('should correctly format and record remaining cards when round ends', () => {
+      const session = new GameSession();
+      session.initGame();
+
+      // Mock player hands: Player 0 and Player 2 finished (0 cards), Player 1 has 2 cards, Player 3 has 1 card
+      session.playerHands = [
+        [],
+        [
+          { suit: 'H', rank: 'A' },
+          { suit: 'S', rank: '10' }
+        ],
+        [],
+        [{ suit: 'J', rank: 'red_joker' }]
+      ];
+      session.finishedPlayers = [0, 2];
+
+      let emittedLogs: any = null;
+      let emittedSummary = '';
+      session.on('remaining_cards_logged', (logs, summary) => {
+        emittedLogs = logs;
+        emittedSummary = summary;
+      });
+
+      // Trigger endRound (Team A wins)
+      (session as any).endRound(0);
+
+      // 1. Verify session property remainingCardsLogs
+      expect(session.remainingCardsLogs).toHaveLength(4);
+
+      // Player 0 (Finished)
+      expect(session.remainingCardsLogs[0].playerIndex).toBe(0);
+      expect(session.remainingCardsLogs[0].cardCount).toBe(0);
+      expect(session.remainingCardsLogs[0].formattedCards).toBe('已出完');
+
+      // Player 1 (Unfinished)
+      expect(session.remainingCardsLogs[1].playerIndex).toBe(1);
+      expect(session.remainingCardsLogs[1].cardCount).toBe(2);
+      expect(session.remainingCardsLogs[1].formattedCards).toBe('红桃A, 黑桃10');
+
+      // Player 2 (Finished)
+      expect(session.remainingCardsLogs[2].playerIndex).toBe(2);
+      expect(session.remainingCardsLogs[2].cardCount).toBe(0);
+      expect(session.remainingCardsLogs[2].formattedCards).toBe('已出完');
+
+      // Player 3 (Unfinished)
+      expect(session.remainingCardsLogs[3].playerIndex).toBe(3);
+      expect(session.remainingCardsLogs[3].cardCount).toBe(1);
+      expect(session.remainingCardsLogs[3].formattedCards).toBe('大王');
+
+      // 2. Verify event payload
+      expect(emittedLogs).toEqual(session.remainingCardsLogs);
+      expect(emittedSummary).toContain('【单局结算 - 各玩家未出完手牌】');
+      expect(emittedSummary).toContain('已出完');
+      expect(emittedSummary).toContain('红桃A, 黑桃10');
+      expect(emittedSummary).toContain('大王');
+    });
+
+    it('should reset remainingCardsLogs when starting a new game', () => {
+      const session = new GameSession();
+      session.initGame();
+      session.playerHands = [[], [{ suit: 'C', rank: '5' }], [], []];
+      session.finishedPlayers = [0, 2, 3];
+      (session as any).endRound(0);
+
+      expect(session.remainingCardsLogs).toHaveLength(4);
+
+      // Re-init game
+      session.initGame();
+      expect(session.remainingCardsLogs).toEqual([]);
+    });
+  });
+
+  describe('Wind-Following (接风校验) & Tribute Bounds Protection (进退贡越界保护)', () => {
+    it('should grant lead to partner when winner has 0 cards and partner has >0 cards', () => {
+      const session = new GameSession();
+      session.phase = 'PLAYING';
+      session.currentWinnerIndex = 0; // Player 0 played winning cards
+      session.playerHands = [
+        [], // Player 0 finished (0 cards)
+        [{ suit: 'S', rank: '5' }], // Player 1 (opponent 1)
+        [{ suit: 'S', rank: '9' }], // Player 2 (partner, >0 cards)
+        [{ suit: 'S', rank: 'J' }] // Player 3 (opponent 2)
+      ];
+      session.lastPlay = { type: 'SINGLE', power: 14, cardCount: 1, playerIndex: 0 };
+      session.currentPlayer = 0;
+
+      // Pass 3 times (Player 1 passes, Player 2 passes, Player 3 passes)
+      session.passTurn(); // currentPlayer was 0 -> moves to 1, passCount=1
+      session.passTurn(); // moves to 2, passCount=2
+      session.passTurn(); // moves to 3, passCount=3 -> triggers trick_ended and wind-following
+
+      // Partner (Player 2) has cards left, so partner gets lead
+      expect(session.currentPlayer).toBe(2);
+      expect(session.currentWinnerIndex).toBe(2);
+    });
+
+    it('should grant lead to next active opponent when winner has 0 cards and partner ALSO has 0 cards', () => {
+      const session = new GameSession();
+      session.phase = 'PLAYING';
+      session.currentWinnerIndex = 0; // Player 0 played winning cards
+      session.playerHands = [
+        [], // Player 0 finished (0 cards)
+        [{ suit: 'S', rank: '5' }], // Player 1 (opponent 1, >0 cards)
+        [], // Player 2 (partner, ALSO 0 cards)
+        [{ suit: 'S', rank: 'J' }] // Player 3 (opponent 2)
+      ];
+      session.lastPlay = { type: 'SINGLE', power: 14, cardCount: 1, playerIndex: 0 };
+      session.currentPlayer = 0;
+
+      // Pass turns until 3 passes happen
+      session.passTurn(); // Player 1 passes
+      session.passTurn(); // Player 3 passes
+      session.passTurn(); // 3rd pass triggers trick_ended
+
+      // Since partner (Player 2) has 0 cards, lead goes to Player 1 (next active opponent)
+      expect(session.currentPlayer).toBe(1);
+      expect(session.currentWinnerIndex).toBe(1);
+    });
+
+    it('should safely protect against out-of-bounds index in tribute and return phase', () => {
+      const session = new GameSession();
+      session.phase = 'TRIBUTE';
+      session.tributeInfo = {
+        payers: [3],
+        receivers: [0],
+        isDouble: false,
+        paidCards: [],
+        status: 'WAITING_TRIBUTE',
+        index: 999 // Out of bounds index
+      };
+
+      // Calling processNextTribute with out of bounds index should transition to WAITING_RETURN without crashing
+      (session as any).processNextTribute();
+      expect(session.tributeInfo.status).toBe('WAITING_RETURN');
+      expect(session.tributeInfo.index).toBe(0);
+
+      // Now set index out of bounds for return
+      session.tributeInfo.index = 999;
+      (session as any).processNextReturn();
+      // Should end tribute phase without crashing
+      expect(session.phase).toBe('PLAYING');
+
+      // Test submitTributeCard out of bounds
+      session.phase = 'TRIBUTE';
+      session.tributeInfo = {
+        payers: [3],
+        receivers: [0],
+        isDouble: false,
+        paidCards: [],
+        status: 'WAITING_TRIBUTE',
+        index: -1 // Out of bounds negative index
+      };
+      expect(() => session.submitTributeCard({ suit: 'S', rank: 'A' })).not.toThrow();
+    });
+  });
+
+  describe('TDD Advanced Session & Flow Tests', () => {
+    it('should assign larger tribute card to 1st place, smaller to 2nd place in double tribute, and starting player to largest tribute payer', () => {
+      vi.useFakeTimers();
+      const session = new GameSession();
+      session.levelTeamA = 2;
+      session.lastRoundFinishedPlayers = [1, 3, 0, 2]; // Opponents 1st & 2nd, Team A 3rd (P0) & 4th (P2) -> Double Tribute
+
+      // P0 has A, P2 has K
+      session.playerHands = [
+        [{ suit: 'S', rank: 'A' }], // P0 (payer 1)
+        [{ suit: 'S', rank: '5' }], // P1 (receiver 1st)
+        [{ suit: 'S', rank: 'K' }], // P2 (payer 2)
+        [{ suit: 'S', rank: '4' }] // P3 (receiver 2nd)
+      ];
+
+      // P0 and P2 are AI players so they process tribute automatically
+      session.players[0].isAI = true;
+      session.players[2].isAI = true;
+
+      session.checkTribute();
+
+      expect(session.phase).toBe('TRIBUTE');
+      expect(session.tributeInfo?.isDouble).toBe(true);
+
+      // Fast forward AI tribute and return processing to finish tribute phase
+      vi.advanceTimersByTime(5000);
+
+      // P0's Spades A (larger) should go to P1 (1st place), P2's Spades K (smaller) should go to P3 (2nd place)
+      expect(session.playerHands[1].some((c) => c.suit === 'S' && c.rank === 'A')).toBe(true);
+      expect(session.playerHands[3].some((c) => c.suit === 'S' && c.rank === 'K')).toBe(true);
+
+      // Starting player should be P0 because P0 paid the largest tribute card (Spades A > Spades K)
+      expect(session.tributeInfo?.startingPlayer).toBe(0);
+
+      vi.useRealTimers();
+    });
+
+    it('should trigger tribute resistance when a single tribute payer holds two Red Jokers', () => {
+      const session = new GameSession();
+      session.levelTeamA = 2;
+      session.lastRoundFinishedPlayers = [1, 2, 3, 0]; // Single tribute: P0 is payer
+
+      session.playerHands = [
+        [
+          { suit: 'H', rank: 'red_joker' },
+          { suit: 'H', rank: 'red_joker' },
+          { suit: 'S', rank: '5' }
+        ], // P0 has 2 Red Jokers
+        [{ suit: 'S', rank: '3' }],
+        [{ suit: 'S', rank: '4' }],
+        [{ suit: 'S', rank: '6' }]
+      ];
+
+      let resisted = false;
+      session.on('tribute_resisted', () => {
+        resisted = true;
+      });
+
+      session.checkTribute();
+
+      expect(resisted).toBe(true);
+      expect(session.phase).toBe('PLAYING');
+    });
+
+    it('should trigger joint tribute resistance when two payers each hold one Red Joker in double tribute', () => {
+      const session = new GameSession();
+      session.levelTeamA = 2;
+      session.lastRoundFinishedPlayers = [1, 3, 0, 2]; // Double tribute: P0 & P2 payers
+
+      session.playerHands = [
+        [
+          { suit: 'H', rank: 'red_joker' },
+          { suit: 'S', rank: '5' }
+        ], // P0 has 1 Red Joker
+        [{ suit: 'S', rank: '3' }],
+        [
+          { suit: 'H', rank: 'red_joker' },
+          { suit: 'S', rank: '6' }
+        ], // P2 has 1 Red Joker
+        [{ suit: 'S', rank: '4' }]
+      ];
+
+      let resisted = false;
+      session.on('tribute_resisted', () => {
+        resisted = true;
+      });
+
+      session.checkTribute();
+
+      expect(resisted).toBe(true);
+      expect(session.phase).toBe('PLAYING');
+    });
+
+    it('should filter eligible return cards to only <= 10 and non-wildcard cards during return phase', () => {
+      const session = new GameSession();
+      session.currentRank = '2'; // Wildcard is Heart 2
+
+      // Player hand contains A, K, 10, 5, and Heart 2 (Wildcard)
+      session.playerHands[0] = [
+        { suit: 'S', rank: 'A' },
+        { suit: 'S', rank: 'K' },
+        { suit: 'S', rank: '10' },
+        { suit: 'S', rank: '5' },
+        { suit: 'H', rank: '2' } // Wildcard! Must NOT be eligible for return
+      ];
+
+      session.tributeInfo = {
+        payers: [3],
+        receivers: [0],
+        isDouble: false,
+        paidCards: [{ suit: 'S', rank: 'K' }],
+        status: 'WAITING_RETURN',
+        index: 0
+      };
+
+      let eligibleReturnCards: Card[] = [];
+      session.on('return_required', (_, eligible) => {
+        eligibleReturnCards = eligible;
+      });
+
+      // Trigger return prompt for player 0
+      (session as any).processNextReturn();
+
+      // Eligible cards must ONLY be 10 and 5 (A, K, and Heart 2 Wildcard excluded)
+      expect(eligibleReturnCards.length).toBe(2);
+      expect(eligibleReturnCards.some((c) => c.rank === '10')).toBe(true);
+      expect(eligibleReturnCards.some((c) => c.rank === '5')).toBe(true);
+      expect(eligibleReturnCards.some((c) => c.rank === 'A')).toBe(false);
+      expect(eligibleReturnCards.some((c) => c.rank === 'K')).toBe(false);
+      expect(eligibleReturnCards.some((c) => c.suit === 'H' && c.rank === '2')).toBe(false);
+    });
+
+    it('should transfer turn to partner when player finishes hand and remaining players pass (pickup)', () => {
+      const session = new GameSession();
+      session.phase = 'PLAYING';
+      session.currentPlayer = 0;
+      session.playerHands = [
+        [{ suit: 'S', rank: 'A' }], // P0 has 1 card left
+        [{ suit: 'S', rank: '5' }], // P1
+        [{ suit: 'S', rank: '10' }], // P2 (partner)
+        [{ suit: 'S', rank: '6' }] // P3
+      ];
+
+      // P0 plays last card and finishes
+      session.playCards([{ suit: 'S', rank: 'A' }]);
+      expect(session.finishedPlayers).toContain(0);
+      expect(session.playerHands[0].length).toBe(0);
+
+      // Remaining players (P1, P2, P3) pass
+      session.passTurn(); // P1 pass
+      session.passTurn(); // P2 pass
+      session.passTurn(); // P3 pass -> trick ends
+
+      // Turn should automatically transfer to P0's partner (P2)
+      expect(session.currentPlayer).toBe(2);
+      expect(session.currentWinnerIndex).toBe(2);
+    });
+
+    it('should safely skip finished partner when picking up turn and assign lead to next active player', () => {
+      const session = new GameSession();
+      session.phase = 'PLAYING';
+      session.currentPlayer = 0;
+      session.playerHands = [
+        [{ suit: 'S', rank: 'A' }], // P0 (Team A) has 1 card left
+        [], // P1 (opponent 1, ALREADY finished 1st!)
+        [], // P2 (partner, ALREADY finished 2nd!)
+        [{ suit: 'S', rank: '6' }] // P3 (opponent 2)
+      ];
+      session.finishedPlayers = [1, 2]; // P1 finished 1st, P2 finished 2nd
+
+      // P0 plays last card and finishes 3rd, leaving P3 as the 4th (last) place
+      session.playCards([{ suit: 'S', rank: 'A' }]);
+
+      // Since 3 players (P1, P2, P0) have finished, the round automatically completes (ROUND_END)
+      expect(session.finishedPlayers).toEqual([1, 2, 0]);
+      expect(session.phase).toBe('ROUND_END');
+    });
+
+    it('should handle OVER_A_SUCCESS when Team A wins 1st place and partner is not last place on rank A', () => {
+      const session = new GameSession();
+      session.levelTeamA = 14; // Rank A
+      session.currentRank = 'A';
+      session.finishedPlayers = [0, 1, 2, 3]; // P0 1st, P2 3rd (not last)
+
+      (session as any).checkRoundEnd();
+
+      expect(session.roundSettlementType).toBe('US_GAME_WIN');
+    });
+
+    it('should demote levelTeamA to 2 after 3 consecutive failures at rank A', () => {
+      const session = new GameSession();
+      session.levelTeamA = 14; // Rank A
+      session.failCountTeamA = 2; // Already failed twice
+
+      // Fail for the 3rd time (opponents 1st & 2nd -> double downfall)
+      session.finishedPlayers = [1, 3, 0, 2];
+
+      (session as any).checkRoundEnd();
+
+      // failCount reaches 3 -> should reset level to 2 and clear failCount
+      expect(session.levelTeamA).toBe(2);
       expect(session.failCountTeamA).toBe(0);
     });
   });

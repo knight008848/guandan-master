@@ -59,6 +59,8 @@ export function getCardWeight(rank: string, currentRank: string): number {
  * 判断是否为逢人配（红心主牌）
  */
 export function isWildCard(card: Card, currentRank: string): boolean {
+  if (card.isSubstituted) return true;
+  if (card.original && card.original.suit === SUITS.HEARTS && card.original.rank === currentRank) return true;
   return card.suit === SUITS.HEARTS && card.rank === currentRank;
 }
 
@@ -79,6 +81,24 @@ export function sortCards(cards: Card[], currentRank: string): Card[] {
     const suitOrder: Record<Suit, number> = { H: 4, S: 3, C: 2, D: 1, J: 0 };
     return suitOrder[b.suit] - suitOrder[a.suit];
   });
+}
+
+/**
+ * 格式化单张牌为可读字符串（如：红桃A、大王、黑桃10）
+ */
+export function formatCard(card: Card): string {
+  const suitNames: Record<Suit, string> = { H: '红桃', D: '方块', C: '梅花', S: '黑桃', J: '' };
+  if (card.rank === 'red_joker') return '大王';
+  if (card.rank === 'black_joker') return '小王';
+  return (suitNames[card.suit] || '') + card.rank;
+}
+
+/**
+ * 格式化手牌列表为可读字符串（如：红桃A, 黑桃10）
+ */
+export function formatHand(cards: Card[]): string {
+  if (!cards || cards.length === 0) return '已出完';
+  return cards.map(formatCard).join(', ');
 }
 
 /**
@@ -108,12 +128,33 @@ export function evaluateNormalHand(cards: Card[], currentRank: string): Combo {
   }
 
   // 2. 对子
-  if (len === 2 && maxCount === 2) {
-    return {
-      type: HAND_TYPES.PAIR,
-      power: getCardWeight(entries[0][0], currentRank),
-      cardCount: 2
-    };
+  if (len === 2) {
+    if (cards.every((c) => c.rank === 'red_joker' || c.rank === 'black_joker')) {
+      const redCount = cards.filter((c) => c.rank === 'red_joker').length;
+      const blackCount = cards.filter((c) => c.rank === 'black_joker').length;
+      if (redCount === 2) {
+        return {
+          type: HAND_TYPES.PAIR,
+          power: 18,
+          cardCount: 2
+        };
+      }
+      if (blackCount === 2) {
+        return {
+          type: HAND_TYPES.PAIR,
+          power: 16,
+          cardCount: 2
+        };
+      }
+      return { type: HAND_TYPES.INVALID, power: 0, cardCount: 0 };
+    }
+    if (maxCount === 2) {
+      return {
+        type: HAND_TYPES.PAIR,
+        power: getCardWeight(entries[0][0], currentRank),
+        cardCount: 2
+      };
+    }
   }
 
   // 3. 三张
@@ -140,7 +181,7 @@ export function evaluateNormalHand(cards: Card[], currentRank: string): Combo {
     if (jokerCount === 4) {
       return {
         type: HAND_TYPES.BOMB,
-        power: 1000, // 天王炸最大
+        power: 2000, // 天王炸最大 (高于10张炸弹及所有普通炸弹)
         name: '天王炸',
         cardCount: 4
       };
@@ -150,10 +191,7 @@ export function evaluateNormalHand(cards: Card[], currentRank: string): Combo {
   // 6. 炸弹 (4张及以上同数值)
   if (maxCount === len && len >= 4) {
     const rankWeight = getCardWeight(entries[0][0], currentRank);
-    let power = 0;
-    if (len === 4) power = 100 + rankWeight;
-    else if (len === 5) power = 200 + rankWeight;
-    else power = (len - 2) * 100 + rankWeight; // 6张及以上：6张为400，7张为500，依此类推
+    const power = len * 100 + rankWeight;
 
     return {
       type: HAND_TYPES.BOMB,
@@ -169,7 +207,7 @@ export function evaluateNormalHand(cards: Card[], currentRank: string): Combo {
     if (straightVal > 0) {
       return {
         type: HAND_TYPES.BOMB,
-        power: 300 + straightVal, // 同花顺威力介于 5张和6张炸弹之间
+        power: 550 + straightVal, // 同花顺威力介于 5张(500+)和6张炸弹(600+)之间
         name: '同花顺',
         cardCount: 5
       };
@@ -348,7 +386,7 @@ function getSequenceMaxWeight(ranks: string[], _currentRank: string, _requiredLe
     return vals[vals.length - 1];
   }
 
-  if (faceValues.includes(14)) {
+  if (faceValues.includes(14) && vals.length >= 2) {
     const altVals = faceValues.map((v) => (v === 14 ? 1 : v)).sort((a, b) => a - b);
     if (isConsecutive(altVals)) {
       return altVals[altVals.length - 1];
@@ -377,8 +415,8 @@ export function canPlay(cardsPlay: Card[], prevPlay: Combo | null, currentRank: 
     return bestPlay;
   }
 
-  if (bestPlay.power === 1000) return bestPlay;
-  if (prevPlay.power === 1000) return null;
+  if (bestPlay.name === '天王炸' || bestPlay.power >= 2000) return bestPlay;
+  if (prevPlay.name === '天王炸' || prevPlay.power >= 2000) return null;
 
   if (bestPlay.type === HAND_TYPES.BOMB && prevPlay.type !== HAND_TYPES.BOMB) {
     return bestPlay;

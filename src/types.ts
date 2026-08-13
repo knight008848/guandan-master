@@ -53,9 +53,12 @@ export interface TributeInfo {
   paidCards: Array<{ payer: number; receiver: number; card: Card }>;
   status: 'WAITING_TRIBUTE' | 'WAITING_RETURN';
   index: number;
+  startingPlayer?: number;
+  resisted?: boolean;
 }
 
 export type SettlementType =
+  | 'OVER_A_SUCCESS'
   | 'US_GAME_WIN'
   | 'OPPONENT_GAME_WIN'
   | 'US_DEGRADED'
@@ -68,3 +71,11 @@ export type SettlementType =
   | 'OPPONENT_UP_1'
   | 'US_FAIL_A'
   | 'OPPONENT_FAIL_A';
+
+export interface PlayerRemainingCards {
+  playerIndex: number;
+  playerName: string;
+  cards: Card[];
+  cardCount: number;
+  formattedCards: string;
+}
