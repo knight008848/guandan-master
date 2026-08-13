@@ -23,3 +23,7 @@ playwright-report/
 blob-report/
 .playwright/
 
+# Vitest coverage report
+coverage/
+
+
