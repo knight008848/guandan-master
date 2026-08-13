@@ -26,3 +26,27 @@
   - **第三步：循序进行开发与测试 (Step 3: Implementation & Comprehensive Testing)**：
     按照既定方案开始编码，在开发过程中同步补齐单元测试或集成测试，严禁在未经过完整方案设计的情况下直接进行侵入式开发。
 
+## ⚛️ 原子化 Commit 规范 (Atomic Commit Guidelines)
+
+- **单次提交原则 (Single Purpose Commit)**：
+  - 每次 Git 提交必须具备高度的原子性（Atomic Commit），即一个 Commit 仅包含一个独立且完整的逻辑变更（如：一个独立的新特性、一组 TDD 测试、一个专门的 Bug 修复或一次文档更新）。
+  - 严禁将大跨度、多主题或无关的代码改动混合打包在一个 Commit 中提交。
+- **提交信息规范 (Standardized Commit Messages)**：
+  - Commit Message 必须严格遵循 Standardized Conventional Commits 规范，格式为 `<type>(<scope>): <short summary>`：
+    - `feat`: 新增功能特性
+    - `fix`: 修复漏洞 Bug
+    - `test`: 增加或修改单元测试/基准测试
+    - `docs`: 文档补充或更新
+    - `chore`: 构建配置、依赖项或忽略文件变更
+    - `refactor`: 重构代码（不改变既有功能与逻辑）
+
+## 🔍 Pre-Push Code Review 审核门禁 (Pre-Push Code Review Gate)
+
+- **严禁擅自直接 Push (No Direct Push Without Approval)**：
+  - AI Agent 或开发人员在完成本地代码开发与 Commit 之后，**严禁擅自直接向远程仓库（GitHub）或 `main` 主分支执行 `git push` 操作**。
+- **结构化 Code Review 审核流程 (Structured Code Review Flow)**：
+  - 在发起推送之前，必须向项目审核人（User Reviewer）展示结构化的 **Code Review 审查报告**，包含：
+    1. **变更 Diff 摘要 (Change Diff Summary)**：修改的文件清单与影响范围；
+    2. **质量与测试结果 (Quality & Test Status)**：TypeScript 校验、ESLint 规范与全量单元测试通过结果；
+    3. **安全性与性能评估 (Security & Performance Audit)**：包含内存防泄露 (`tf.tidy()`) 与 3 级 Fallback 确认。
+  - **显式批准方可推送 (Explicit Approval Required)**：仅在项目审核人显式确认批准（如回复“Approve”、“同意”或“允许 Push”）之后，方可执行 `git push` 命令将代码推送到远程仓库。
