@@ -51,11 +51,8 @@
     2. **静态与类型安全**：检查 `npx tsc --noEmit` 0 错误与 ESLint / Stylelint 0 警告。
     3. **降级防护网**：检查三级 Fallback 降级在断网/网络异常下的 0ms 拦截能力。
     4. **原子性 Commit 与测试覆盖率**：检查全量单元测试 100% 绿灯且覆盖率合格。
-- **审计报告归档与严格脱敏 (Report Archiving & Privacy Sanitization)**：
-  - **100% 隐私脱敏红线 (Zero Sensitive Info Guarantee)**：
-    - **脱敏绝对路径**：严禁在报告中写入包含个人用户名或系统盘符的绝对路径（如 `C:\Users\xx\...`），必须统一转换为项目相对路径（如 `./src/ai/tfjs_agent.ts`）。
-    - **严禁暴露凭据**：脱敏所有密钥、Token、密码、环境变量或敏感配置。
-  - **单 Feature / Milestone 归档规整 (Clean Archiving Policy)**：
-    - 为防范文件混乱，**同一个功能分支或 Milestone 仅保留/更新一份精炼报告**（命名格式：`.agents/reviews/CR-<feature-name>.md`），不产生碎片文件，保持开源仓库极度干净整洁。
+- **本地审计报告归档与 `.gitignore` 隔离 (Local-Only Archiving Policy)**：
+  - 每次生成的 Code Review 报告更新保存在本地 [`.agents/reviews/`](file:///d:/Repos/guandan-master/.agents/reviews/) 目录下（命名格式：`CR-<feature-name>.md`）。
+  - **`.gitignore` 显式隔离**：该目录已被 `.gitignore` 明确忽略，**仅存在于本地开发环境**，绝不会提交或发布到远程 Public 仓库中，确保 GitHub 开源项目 100% 干净且 0 隐私隐患。
 - **显式批准方可推送 (Explicit Approval Required)**：
   - 呈现归档的 Code Review 报告并由项目审核人显式确认批准（回复“Approve”、“同意”或“允许 Push”）之后，方可执行 `git push` 命令推送到远程仓库。
