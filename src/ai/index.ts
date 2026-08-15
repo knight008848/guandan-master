@@ -52,16 +52,32 @@ export function aiChoosePlay(view: PlayerStateView, algorithm?: AIAlgorithmType)
   // 2. 调用决策仲裁与基准测试引擎 (Benchmark Engine) 计算综合评分与推荐
   const report = auditAndComparePlays(view, proposals);
 
-  // 3. 输出 Benchmark 信息至控制台方便开发观察
-  console.log(`[AI Benchmark Audit] Best Algo Chosen: "${report.bestAlgo}". Proposals evaluated:`);
-  report.proposals.forEach((p) => {
-    const cardStr = p.cards ? JSON.stringify(p.cards.map((c) => c.rank)) : 'pass';
-    console.log(`  - Algorithm "${p.algoName}": Valid=${p.isValid}, Score=${p.score}, Cards=${cardStr}`);
-  });
+  // 3. 格式化输出高亮决策日志至浏览器控制台，方便直观观察 TFJS 决策与仲裁
+  const bestProposal = report.proposals.find((p) => p.algoName === report.bestAlgo);
+  const tfjsProposal = report.proposals.find((p) => p.algoName === 'tfjs');
+  const isTFJSWinner = report.bestAlgo === 'tfjs';
+
+  console.groupCollapsed(
+    `%c[AI Decision Engine]%c ${isTFJSWinner ? '🧠 采用 TensorFlow.js 模型决策' : '🌲 采用规则策略决策: ' + report.bestAlgo}`,
+    'background: #1e3a8a; color: #60a5fa; font-weight: bold; padding: 2px 6px; border-radius: 4px;',
+    isTFJSWinner ? 'color: #34d399; font-weight: bold;' : 'color: #fbbf24; font-weight: bold;'
+  );
+  console.log('🏆 仲裁优胜算法:', report.bestAlgo);
+  console.log('🤖 TFJS 提案评分:', tfjsProposal?.score, '| 提案出牌:', tfjsProposal?.cards?.map((c) => c.rank) || 'PASS');
+  console.table(
+    report.proposals.map((p) => ({
+      算法名称: p.algoName,
+      规则合法: p.isValid ? '✅ 合法' : '❌ 非法',
+      综合估值评分: p.score,
+      建议出牌: p.cards ? p.cards.map((c) => `${c.suit || ''}${c.rank}`).join(' ') : 'PASS'
+    }))
+  );
+  console.groupEnd();
 
   // 4. 返回仲裁引擎决定的最佳推荐出牌
   return report.recommendedPlay;
 }
+
 
 /**
  * AI 跟牌接口 (直接委托给经典启发式跟牌算法，供测试/老版本会话逻辑调用)
