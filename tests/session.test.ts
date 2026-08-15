@@ -934,5 +934,100 @@ describe('GameSession Integration and Flow Tests', () => {
       expect(session.levelTeamA).toBe(2);
       expect(session.failCountTeamA).toBe(0);
     });
+
+    it('should increase Team A failCount when Team A gets 1st but partner is 4th (last) on rank A', () => {
+      const session = new GameSession();
+      session.levelTeamA = 14;
+      session.currentRank = 'A';
+      session.failCountTeamA = 0;
+      session.finishedPlayers = [0, 1, 3]; // P0 1st, P1 2nd, P3 3rd -> P2 is 4th (last, not in finishedPlayers)
+
+      (session as any).checkRoundEnd();
+
+      expect(session.failCountTeamA).toBe(1);
+      expect(session.roundSettlementType).toBe('US_FAIL_A');
+      expect(session.levelTeamA).toBe(14);
+    });
+
+    it('should increase Team B failCount and set OPPONENT_FAIL_A when Team A wins while Team B is at Rank A', () => {
+      const session = new GameSession();
+      session.levelTeamA = 5;
+      session.levelTeamB = 14; // Opponent at Rank A
+      session.failCountTeamB = 0;
+      session.finishedPlayers = [0, 2, 1]; // Team A wins (double upstream)
+
+      (session as any).checkRoundEnd();
+
+      expect(session.failCountTeamB).toBe(1);
+      expect(session.roundSettlementType).toBe('OPPONENT_FAIL_A');
+      expect(session.levelTeamA).toBe(8); // +3 levels
+    });
+
+    it('should demote Team B to level 2 when Team B fails at Rank A for the 3rd time', () => {
+      const session = new GameSession();
+      session.levelTeamA = 6;
+      session.levelTeamB = 14;
+      session.failCountTeamB = 2; // Already failed twice
+      session.finishedPlayers = [0, 2, 1]; // Team A wins
+
+      (session as any).checkRoundEnd();
+
+      expect(session.levelTeamB).toBe(2);
+      expect(session.failCountTeamB).toBe(0);
+      expect(session.roundSettlementType).toBe('OPPONENT_DEGRADED');
+    });
+
+    it('should handle OPPONENT_GAME_WIN when Team B wins 1st and partner is not last on Rank A', () => {
+      const session = new GameSession();
+      session.levelTeamB = 14;
+      session.currentRank = 'A';
+      session.finishedPlayers = [1, 0, 3]; // P1 (Team B) 1st, P3 (Team B) 3rd (in finishedPlayers)
+
+      (session as any).checkRoundEnd();
+
+      expect(session.roundSettlementType).toBe('OPPONENT_GAME_WIN');
+    });
+
+    it('should handle OPPONENT_FAIL_A when Team B gets 1st but partner is 4th on Rank A', () => {
+      const session = new GameSession();
+      session.levelTeamB = 14;
+      session.currentRank = 'A';
+      session.failCountTeamB = 0;
+      session.finishedPlayers = [1, 0, 2]; // P1 1st, P0 2nd, P2 3rd -> P3 is 4th (last, not in finishedPlayers)
+
+      (session as any).checkRoundEnd();
+
+      expect(session.failCountTeamB).toBe(1);
+      expect(session.roundSettlementType).toBe('OPPONENT_FAIL_A');
+      expect(session.levelTeamB).toBe(14);
+    });
+
+    it('should demote Team B when Team B fails at Rank A for 3rd time with 1st & 4th finish', () => {
+      const session = new GameSession();
+      session.levelTeamB = 14;
+      session.currentRank = 'A';
+      session.failCountTeamB = 2; // Already failed twice
+      session.finishedPlayers = [1, 0, 2]; // P1 1st, P0 2nd, P2 3rd -> P3 is 4th
+
+      (session as any).checkRoundEnd();
+
+      expect(session.levelTeamB).toBe(2);
+      expect(session.failCountTeamB).toBe(0);
+      expect(session.roundSettlementType).toBe('OPPONENT_DEGRADED');
+    });
+
+    it('should increase Team A failCount when Team B wins while Team A is at Rank A', () => {
+      const session = new GameSession();
+      session.levelTeamA = 14; // Team A at Rank A
+      session.levelTeamB = 5;
+      session.failCountTeamA = 0;
+      session.finishedPlayers = [1, 3, 0]; // Team B wins (double upstream)
+
+      (session as any).checkRoundEnd();
+
+      expect(session.failCountTeamA).toBe(1);
+      expect(session.levelTeamA).toBe(14);
+      expect(session.levelTeamB).toBe(8); // +3
+    });
   });
 });

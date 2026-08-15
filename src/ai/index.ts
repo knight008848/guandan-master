@@ -53,7 +53,6 @@ export function aiChoosePlay(view: PlayerStateView, algorithm?: AIAlgorithmType)
   const report = auditAndComparePlays(view, proposals);
 
   // 3. 格式化输出高亮决策日志至浏览器控制台，方便直观观察 TFJS 决策与仲裁
-  const bestProposal = report.proposals.find((p) => p.algoName === report.bestAlgo);
   const tfjsProposal = report.proposals.find((p) => p.algoName === 'tfjs');
   const isTFJSWinner = report.bestAlgo === 'tfjs';
 
@@ -63,7 +62,12 @@ export function aiChoosePlay(view: PlayerStateView, algorithm?: AIAlgorithmType)
     isTFJSWinner ? 'color: #34d399; font-weight: bold;' : 'color: #fbbf24; font-weight: bold;'
   );
   console.log('🏆 仲裁优胜算法:', report.bestAlgo);
-  console.log('🤖 TFJS 提案评分:', tfjsProposal?.score, '| 提案出牌:', tfjsProposal?.cards?.map((c) => c.rank) || 'PASS');
+  console.log(
+    '🤖 TFJS 提案评分:',
+    tfjsProposal?.score,
+    '| 提案出牌:',
+    tfjsProposal?.cards?.map((c) => c.rank) || 'PASS'
+  );
   console.table(
     report.proposals.map((p) => ({
       算法名称: p.algoName,
@@ -77,7 +81,6 @@ export function aiChoosePlay(view: PlayerStateView, algorithm?: AIAlgorithmType)
   // 4. 返回仲裁引擎决定的最佳推荐出牌
   return report.recommendedPlay;
 }
-
 
 /**
  * AI 跟牌接口 (直接委托给经典启发式跟牌算法，供测试/老版本会话逻辑调用)

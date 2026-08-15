@@ -255,4 +255,135 @@ describe('DOMRenderer UI Rendering & Interaction Tests', () => {
     expect(logContentList!.textContent).toContain('🂠 【单局结算 - 玩家未出完手牌】');
     expect(logContentList!.textContent).toContain('你 (玩家): 剩余 1 张 [黑桃A]');
   });
+
+  it('应该在触发 toast 事件时在屏幕左上角动态生成并按时销毁 Toast 提示框', () => {
+    (renderer as any).showToast('测试轻提示信息！');
+
+    const toast = document.querySelector('.toast');
+    expect(toast).not.toBeNull();
+    expect(toast!.textContent).toBe('测试轻提示信息！');
+
+    // 快进定时器
+    vi.advanceTimersByTime(4000);
+    expect(document.querySelector('.toast')).toBeNull();
+  });
+
+  it('应该在点击理牌按钮时在“按牌值整理”与“按花色整理”双模式间正确切换', () => {
+    const sortBtn = document.getElementById('btn-sort') as HTMLButtonElement;
+    expect(sortBtn).not.toBeNull();
+
+    session.playerHands[0] = [
+      { suit: 'H', rank: '2' },
+      { suit: 'S', rank: 'A' },
+      { suit: 'D', rank: '5' }
+    ];
+
+    expect((renderer as any).sortMode).toBe('RANK');
+
+    sortBtn.click();
+    expect((renderer as any).sortMode).toBe('SUIT');
+
+    sortBtn.click();
+    expect((renderer as any).sortMode).toBe('RANK');
+  });
+
+  it('应该在点击提示按钮 (#btn-tip) 时智能选中可行出牌解', () => {
+    const tipBtn = document.getElementById('btn-tip') as HTMLButtonElement;
+    expect(tipBtn).not.toBeNull();
+
+    session.phase = 'PLAYING';
+    session.currentPlayer = 0;
+    session.lastPlay = {
+      type: 'SINGLE',
+      power: 8,
+      cardCount: 1,
+      name: '单张',
+      playerIndex: 3,
+      cards: [{ suit: 'S', rank: '8' }]
+    };
+
+    session.playerHands[0] = [
+      { suit: 'S', rank: '9' },
+      { suit: 'S', rank: '10' },
+      { suit: 'S', rank: 'J' }
+    ];
+
+    (renderer as any).renderAllHands(session.playerHands);
+
+    tipBtn.click();
+    const selected = document.querySelectorAll('#player-cards-container .card.selected');
+    expect(selected.length).toBeGreaterThan(0);
+  });
+
+  it('应该在点击重置选择按钮时清除所有已选卡牌的 selected 状态', () => {
+    const resetBtn = document.getElementById('btn-reset') as HTMLButtonElement;
+    expect(resetBtn).not.toBeNull();
+
+    session.playerHands[0] = [{ suit: 'S', rank: 'A' }];
+    (renderer as any).renderAllHands(session.playerHands);
+
+    const cardEl = document.querySelector('#player-cards-container .card') as HTMLElement;
+    cardEl.classList.add('selected');
+    renderer.updatePlayButtonState();
+    expect(document.querySelectorAll('#player-cards-container .card.selected').length).toBe(1);
+
+    resetBtn.click();
+    expect(document.querySelectorAll('#player-cards-container .card.selected').length).toBe(0);
+  });
+
+  it('应该支持点击展开/关闭运行日志面板 (#btn-toggle-log / #btn-close-log)', () => {
+    const toggleBtn = document.getElementById('btn-toggle-log');
+    const closeBtn = document.getElementById('btn-close-log');
+    const panel = document.getElementById('log-panel');
+
+    expect(toggleBtn).not.toBeNull();
+    expect(panel).not.toBeNull();
+
+    toggleBtn!.click();
+    expect(panel!.classList.contains('show')).toBe(true);
+
+    closeBtn!.click();
+    expect(panel!.classList.contains('show')).toBe(false);
+  });
+
+  it('应该在触发炸弹、天王炸与同花顺特效时激活全屏震动与粒子生成', () => {
+    const table = document.getElementById('game-table-container');
+    expect(table).not.toBeNull();
+
+    // 1. 普通炸弹
+    (renderer as any).triggerBombEffects(400);
+    expect(table!.classList.contains('screen-shake')).toBe(true);
+    expect(document.querySelectorAll('.particle').length).toBeGreaterThan(0);
+
+    // 2. 天王炸 (Power >= 1000)
+    (renderer as any).triggerBombEffects(2000);
+    const toasts = Array.from(document.querySelectorAll('.toast')).map((t) => t.textContent);
+    expect(toasts.some((txt) => txt?.includes('天王炸'))).toBe(true);
+
+    // 3. 同花顺 (Power >= 200)
+    (renderer as any).triggerBombEffects(557);
+    const toastsAfter = Array.from(document.querySelectorAll('.toast')).map((t) => t.textContent);
+    expect(toastsAfter.some((txt) => txt?.includes('同花顺'))).toBe(true);
+  });
+
+  it('应该在所有结算状态 (US_GAME_WIN, US_UP_3, OPPONENT_DEGRADED) 下正确配置弹窗文案与样式', () => {
+    const overlay = document.getElementById('settlement-overlay');
+    const dialogBox = overlay?.querySelector('.dialog-box');
+    const title = document.getElementById('settlement-title');
+
+    // 1. 我方大结局过 A 成功 (US_GAME_WIN)
+    session.emit('round_ended', 0, 3, true, '<div>列表</div>', 'US_GAME_WIN');
+    expect(dialogBox!.classList.contains('settlement-us-game-win')).toBe(true);
+    expect(title!.textContent).toContain('我方全盘获胜');
+
+    // 2. 我方连升 3 级 (US_UP_3)
+    session.emit('round_ended', 0, 3, false, '<div>列表</div>', 'US_UP_3');
+    expect(dialogBox!.classList.contains('settlement-us-up-3')).toBe(true);
+    expect(title!.textContent).toContain('连升三级');
+
+    // 3. 对手退级 (OPPONENT_DEGRADED)
+    session.emit('round_ended', 0, 1, false, '<div>列表</div>', 'OPPONENT_DEGRADED');
+    expect(dialogBox!.classList.contains('settlement-opponent-degraded')).toBe(true);
+    expect(title!.textContent).toContain('退回 2 级');
+  });
 });
