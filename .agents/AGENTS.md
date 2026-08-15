@@ -25,6 +25,10 @@
     在动工编写业务代码前，必须先理清技术方案、数据流向和模块依赖关系，制定清晰的修改步骤与测试方案，并在需要时与团队对齐方案。
   - **第三步：循序进行开发与测试 (Step 3: Implementation & Comprehensive Testing)**：
     按照既定方案开始编码，在开发过程中同步补齐单元测试或集成测试，严禁在未经过完整方案设计的情况下直接进行侵入式开发。
+  - **第四步：对齐开发工作流规范 (Step 4: Align with .agents/WORKFLOW.md)**：
+    所有流程必须与 [`.agents/WORKFLOW.md`](file:///d:/Repos/guandan-master/.agents/WORKFLOW.md) 保持一致，严格执行 SDD 规范、TDD 失败测试先行、原子化 Commit、Pre-Push Code Review 门禁与强制 GitHub PR 合并。
+
+
 
 ## ⚛️ 原子化 Commit 规范 (Atomic Commit Guidelines)
 

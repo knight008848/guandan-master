@@ -46,9 +46,11 @@
 ```bash
 guandan-master/
 │
-├── .agents/         # 项目 Agent 行为约束与原子化 Commit / Code Review 规范
+├── .agents/         # 项目 Agent 行为约束、开发工作流与 PR 规范 (AGENTS.md, WORKFLOW.md)
 ├── docs/            # 设计与开发文档 (PRD、系统架构、开源调研评估、任务清单)
 ├── public/          # 静态资源与离线 AI 模型 (models/danzero/)
+
+
 ├── src/             # 源码目录
 │   ├── main.ts      # 应用程序入口
 │   ├── session.ts   # 游戏核心状态机 (Finite State Machine / GameSession)
