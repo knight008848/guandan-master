@@ -3,15 +3,47 @@
  */
 
 import { Card, PlayerStateView } from '../types';
-import { heuristicChoosePlay, greedyChoosePlay, heuristicFollowPlay } from './ai_search';
+import {
+  heuristicChoosePlay,
+  greedyChoosePlay,
+  heuristicFollowPlay,
+  tfjsChoosePlay,
+  getSharedTFJSAgent,
+  setSharedTFJSAgent
+} from './ai_search';
 import { auditAndComparePlays, PlayProposal } from './ai_auditor';
+import { TFJSGuandanAgent } from './tfjs_agent';
+
+export { TFJSGuandanAgent, getSharedTFJSAgent, setSharedTFJSAgent, tfjsChoosePlay };
+
+// 初始化默认全局单例 Agent
+const defaultTFJSAgent = new TFJSGuandanAgent();
+defaultTFJSAgent.init().catch((e) => console.warn('[AI] TFJS default init warn:', e));
+setSharedTFJSAgent(defaultTFJSAgent);
+
+export type AIAlgorithmType = 'tfjs' | 'heuristic' | 'greedy' | 'pass';
 
 /**
- * AI 决策主入口 (总控仲裁架构)
+ * AI 决策主入口 (支持单算法指定与总控仲裁多提案竞选)
  */
-export function aiChoosePlay(view: PlayerStateView): Card[] | null {
-  // 1. 搜集来自不同出牌决策算法的提案
+export function aiChoosePlay(view: PlayerStateView, algorithm?: AIAlgorithmType): Card[] | null {
+  // 若显式指定了单一算法，直接执行对应算法返回
+  if (algorithm === 'tfjs') {
+    return tfjsChoosePlay(view);
+  }
+  if (algorithm === 'heuristic') {
+    return heuristicChoosePlay(view);
+  }
+  if (algorithm === 'greedy') {
+    return greedyChoosePlay(view);
+  }
+  if (algorithm === 'pass') {
+    return null;
+  }
+
+  // 1. 搜集来自不同出牌决策算法的提案（含深度学习 TFJS、启发式规则、贪心与兜底）
   const proposals: PlayProposal[] = [
+    { algoName: 'tfjs', cards: tfjsChoosePlay(view) },
     { algoName: 'heuristic', cards: heuristicChoosePlay(view) },
     { algoName: 'greedy', cards: greedyChoosePlay(view) },
     { algoName: 'pass', cards: null } // 默认保留过牌作为候选兜底

@@ -115,18 +115,26 @@ export class TFJSGuandanAgent {
           return this.evaluateActionsFallback(view, candidateActions);
         }
 
-        // 对每一个候选动作计算 Q 值分值
-        for (const action of candidateActions) {
-          const stateTensor = tf.tensor2d([Array.from(stateArray)], [1, STATE_VECTOR_SIZE]);
-          const pred = activeModel.predict(stateTensor) as tf.Tensor;
-          const qVal = pred.dataSync()[0];
+        // 矩阵批处理 (Batch Predict)：一次性构建候选动作特征批次矩阵
+        const batchSize = candidateActions.length;
+        const batchArray = new Float32Array(batchSize * STATE_VECTOR_SIZE);
+        for (let i = 0; i < batchSize; i++) {
+          batchArray.set(stateArray, i * STATE_VECTOR_SIZE);
+        }
 
-          // 估算打出该动作后剩余手牌的质量
+        const batchTensor = tf.tensor2d(batchArray, [batchSize, STATE_VECTOR_SIZE]);
+        const pred = activeModel.predict(batchTensor) as tf.Tensor;
+        const qVals = pred.dataSync();
+
+        for (let i = 0; i < batchSize; i++) {
+          const action = candidateActions[i];
           const remainingHand = action
             ? view.hand.filter((c) => !action.some((ac) => ac.suit === c.suit && ac.rank === c.rank))
             : view.hand;
-          const heuristicScore = evaluateHand(remainingHand, view.currentRank).totalScore;
-          const finalScore = qVal * 0.3 + heuristicScore * 0.7;
+          const handEval = evaluateHand(remainingHand, view.currentRank);
+          const progressScore = action ? (remainingHand.length === 0 ? 100 : action.length * 10) : -5;
+          const heuristicScore = handEval.totalScore + progressScore;
+          const finalScore = qVals[i] * 0.3 + heuristicScore * 0.7;
           scores.push(finalScore);
         }
 
@@ -162,7 +170,9 @@ export class TFJSGuandanAgent {
       const remainingHand = action
         ? view.hand.filter((c) => !action.some((ac) => ac.suit === c.suit && ac.rank === c.rank))
         : view.hand;
-      return evaluateHand(remainingHand, view.currentRank).totalScore;
+      const handEval = evaluateHand(remainingHand, view.currentRank);
+      const progressScore = action ? (remainingHand.length === 0 ? 100 : action.length * 10) : -5;
+      return handEval.totalScore + progressScore;
     });
     let bestIndex = 0;
     let maxScore = -Infinity;
