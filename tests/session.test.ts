@@ -498,7 +498,6 @@ describe('GameSession Integration and Flow Tests', () => {
       expect(session.players[0].isAI).toBe(false);
     });
 
-
     it('should correctly upgrade from Q to A without triggering A-rank resolve and resetting to level 2', () => {
       const session = new GameSession();
       session.initGame();

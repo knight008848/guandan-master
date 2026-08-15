@@ -159,8 +159,6 @@ describe('DOMRenderer UI Rendering & Interaction Tests', () => {
     expect(title!.textContent).toContain('连升三级');
   });
 
-
-
   it('应该在点击“重选”按钮 (#btn-reset) 时批量清空手牌选中状态', () => {
     const resetBtn = document.getElementById('btn-reset') as HTMLButtonElement;
     expect(resetBtn).not.toBeNull();
@@ -196,7 +194,6 @@ describe('DOMRenderer UI Rendering & Interaction Tests', () => {
     session.emit('turn_started', 0, false);
     expect(btnPass.disabled).toBe(false);
   });
-
 
   it('应该在触发 tribute_required 事件时弹出进贡选择框，选择卡牌后允许提交', () => {
     const tributeOverlay = document.getElementById('tribute-overlay');
@@ -241,7 +238,6 @@ describe('DOMRenderer UI Rendering & Interaction Tests', () => {
     expect(title!.textContent).toContain('遗憾败北');
   });
 
-
   it('应该在触发 remaining_cards_logged 事件时成功在 DOM 日志面板中注入各玩家未出完手牌节点', () => {
     const logContentList = document.getElementById('log-content-list');
 
@@ -260,7 +256,3 @@ describe('DOMRenderer UI Rendering & Interaction Tests', () => {
     expect(logContentList!.textContent).toContain('你 (玩家): 剩余 1 张 [黑桃A]');
   });
 });
-
-
-
-
