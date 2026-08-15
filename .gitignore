@@ -23,6 +23,10 @@ playwright-report/
 blob-report/
 .playwright/
 
-# Coverage reports
+# Vitest coverage report
 coverage/
+
+# Agent Code Review reports (local archived only)
+.agents/reviews/
+
 

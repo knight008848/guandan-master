@@ -129,12 +129,13 @@ export function auditAndComparePlays(view: PlayerStateView, proposals: PlayPropo
 }
 
 /**
- * 辅助方法：校验要出的牌是否全在手牌中 (防作弊/硬性校验)
+ * 辅助方法：校验要出的牌是否全在手牌中 (防作弊/硬性校验，兼容逢人配替代牌)
  */
 function checkCardsExistInHand(playCards: Card[], hand: Card[]): boolean {
   const handCopy = [...hand];
   for (const pCard of playCards) {
-    const idx = handCopy.findIndex((hCard) => hCard.suit === pCard.suit && hCard.rank === pCard.rank);
+    const target = pCard.original || pCard;
+    const idx = handCopy.findIndex((hCard) => hCard.suit === target.suit && hCard.rank === target.rank);
     if (idx === -1) {
       return false; // 要出的牌在手牌中找不到
     }

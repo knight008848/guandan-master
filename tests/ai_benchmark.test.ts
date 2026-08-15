@@ -1,8 +1,8 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll } from 'vitest';
 import { Card, PlayerStateView } from '../src/types';
 import { auditAndComparePlays } from '../src/ai/ai_auditor';
-import { heuristicChoosePlay, greedyChoosePlay } from '../src/ai/ai_search';
-import { sortCards } from '../src/rules';
+import { heuristicChoosePlay, greedyChoosePlay, tfjsChoosePlay } from '../src/ai/ai_search';
+import { TFJSGuandanAgent } from '../src/ai/tfjs_agent';
 
 // Helper to generate a full deck of 108 cards (2 decks of 54)
 function generateDeck(): Card[] {
@@ -33,22 +33,34 @@ function shuffle(deck: Card[]): Card[] {
 }
 
 describe('Guandan AI Algorithm Benchmark Simulation', () => {
-  it('should run 500 simulated rounds and analyze performance', () => {
-    const numRounds = 500;
+  let tfjsAgent: TFJSGuandanAgent;
+
+  beforeAll(async () => {
+    tfjsAgent = new TFJSGuandanAgent();
+    await tfjsAgent.init();
+  });
+
+  it('should run 100 simulated rounds and analyze performance across TFJS, Heuristic and Greedy algorithms', () => {
+    const numRounds = 100;
 
     const stats = {
       totalRounds: numRounds,
+      tfjsValidCount: 0,
       heuristicValidCount: 0,
       greedyValidCount: 0,
+      tfjsBestCount: 0,
       heuristicBestCount: 0,
       greedyBestCount: 0,
       passBestCount: 0,
       auditorFallbackCount: 0,
+      tfjsAverageScore: 0,
       heuristicAverageScore: 0,
       greedyAverageScore: 0,
-      scoreDiffSum: 0
+      scoreDiffTFJSvsHeuristic: 0,
+      totalTFJSLatencyMs: 0
     };
 
+    let totalTFJSScore = 0;
     let totalHeuristicScore = 0;
     let totalGreedyScore = 0;
 
@@ -87,8 +99,14 @@ describe('Guandan AI Algorithm Benchmark Simulation', () => {
         opponentCardCounts: [15, 15, 15, 15]
       };
 
-      // 5. Gather proposals
+      // 5. Gather proposals & Benchmark latency
+      const t0 = performance.now();
+      const tfjsPlay = tfjsChoosePlay(view, tfjsAgent);
+      const t1 = performance.now();
+      stats.totalTFJSLatencyMs += t1 - t0;
+
       const proposals = [
+        { algoName: 'tfjs', cards: tfjsPlay },
         { algoName: 'heuristic', cards: heuristicChoosePlay(view) },
         { algoName: 'greedy', cards: greedyChoosePlay(view) },
         { algoName: 'pass', cards: null }
@@ -98,9 +116,14 @@ describe('Guandan AI Algorithm Benchmark Simulation', () => {
       const report = auditAndComparePlays(view, proposals);
 
       // 7. Record stats
+      const tfAudit = report.proposals.find((p) => p.algoName === 'tfjs')!;
       const hAudit = report.proposals.find((p) => p.algoName === 'heuristic')!;
       const gAudit = report.proposals.find((p) => p.algoName === 'greedy')!;
 
+      if (tfAudit.isValid) {
+        stats.tfjsValidCount++;
+        totalTFJSScore += tfAudit.score;
+      }
       if (hAudit.isValid) {
         stats.heuristicValidCount++;
         totalHeuristicScore += hAudit.score;
@@ -110,11 +133,13 @@ describe('Guandan AI Algorithm Benchmark Simulation', () => {
         totalGreedyScore += gAudit.score;
       }
 
-      if (hAudit.isValid && gAudit.isValid) {
-        stats.scoreDiffSum += hAudit.score - gAudit.score;
+      if (tfAudit.isValid && hAudit.isValid) {
+        stats.scoreDiffTFJSvsHeuristic += tfAudit.score - hAudit.score;
       }
 
-      if (report.bestAlgo === 'heuristic') {
+      if (report.bestAlgo === 'tfjs') {
+        stats.tfjsBestCount++;
+      } else if (report.bestAlgo === 'heuristic') {
         stats.heuristicBestCount++;
       } else if (report.bestAlgo === 'greedy') {
         stats.greedyBestCount++;
@@ -125,21 +150,28 @@ describe('Guandan AI Algorithm Benchmark Simulation', () => {
       }
     }
 
+    stats.tfjsAverageScore = totalTFJSScore / Math.max(1, stats.tfjsValidCount);
     stats.heuristicAverageScore = totalHeuristicScore / Math.max(1, stats.heuristicValidCount);
     stats.greedyAverageScore = totalGreedyScore / Math.max(1, stats.greedyValidCount);
 
     console.log('\n======================================================');
-    console.log('         GUANDAN AI DECISION BENCHMARK REPORT         ');
+    console.log('      GUANDAN AI BENCHMARK REPORT (TFJS INTEGRATED)   ');
     console.log('======================================================');
     console.log(`Total Simulated Situations  : ${stats.totalRounds}`);
+    console.log(`TFJS Proposal Valid Rate    : ${((stats.tfjsValidCount / numRounds) * 100).toFixed(1)}%`);
     console.log(`Heuristic Proposal Valid Rate: ${((stats.heuristicValidCount / numRounds) * 100).toFixed(1)}%`);
     console.log(`Greedy Proposal Valid Rate   : ${((stats.greedyValidCount / numRounds) * 100).toFixed(1)}%`);
     console.log('------------------------------------------------------');
+    console.log(`Average TFJS Score           : ${stats.tfjsAverageScore.toFixed(2)}`);
     console.log(`Average Heuristic Score      : ${stats.heuristicAverageScore.toFixed(2)}`);
     console.log(`Average Greedy Score         : ${stats.greedyAverageScore.toFixed(2)}`);
-    console.log(`Average Score Delta (H - G)  : ${(stats.scoreDiffSum / numRounds).toFixed(2)}`);
+    console.log(`Score Delta (TFJS - Heuristic): ${(stats.scoreDiffTFJSvsHeuristic / numRounds).toFixed(2)}`);
+    console.log(`Average TFJS Latency Per Step: ${(stats.totalTFJSLatencyMs / numRounds).toFixed(3)} ms`);
     console.log('------------------------------------------------------');
-    console.log('Decision Win Rate (Recommendation Frequency):');
+    console.log('Decision Win Rate (Auditor Best Recommendation Frequency):');
+    console.log(
+      ` - TensorFlow.js Algorithm    : ${stats.tfjsBestCount} (${((stats.tfjsBestCount / numRounds) * 100).toFixed(1)}%)`
+    );
     console.log(
       ` - Heuristic Algorithm Chosen : ${stats.heuristicBestCount} (${((stats.heuristicBestCount / numRounds) * 100).toFixed(1)}%)`
     );
@@ -154,7 +186,9 @@ describe('Guandan AI Algorithm Benchmark Simulation', () => {
     );
     console.log('======================================================\n');
 
-    expect(stats.heuristicValidCount).toBeGreaterThan(0);
-    expect(stats.greedyValidCount).toBeGreaterThan(0);
+    expect(stats.tfjsValidCount).toBe(numRounds); // 100% 合法率
+    expect(stats.heuristicValidCount).toBe(numRounds);
+    expect(stats.greedyValidCount).toBe(numRounds);
+    expect(stats.totalTFJSLatencyMs / numRounds).toBeLessThan(1000); // Node.js CPU 模式下 < 1000ms (浏览器 WebGL 加速下 < 10ms)
   }, 240000);
 });
