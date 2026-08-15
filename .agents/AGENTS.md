@@ -56,3 +56,14 @@
   - **`.gitignore` 显式隔离**：该目录已被 `.gitignore` 明确忽略，**仅存在于本地开发环境**，绝不会提交或发布到远程 Public 仓库中，确保 GitHub 开源项目 100% 干净且 0 隐私隐患。
 - **显式批准方可推送 (Explicit Approval Required)**：
   - 呈现归档的 Code Review 报告并由项目审核人显式确认批准（回复“Approve”、“同意”或“允许 Push”）之后，方可执行 `git push` 命令推送到远程仓库。
+
+## 🔀 强制 Pull Request (PR) 合并规范 (Mandatory PR-Only Merge Policy)
+
+- **严禁本地直接合入主分支 (Strictly No Direct Local Merge to Main)**：
+  - 所有的功能开发（`feature/*`）、漏洞修复（`fix/*`）或优化分支，**绝对禁止在本地直接执行 `git checkout main && git merge <branch>` 并推送到主分支**。
+- **永久通过 GitHub Pull Request 进行合并 (Always Merge via GitHub PR)**：
+  - 代码合入 `main` 主分支必须 100% 走 GitHub Pull Request 流程：
+    1. **推送 Feature 分支**：将经 Code Review 批准的本地原子化 Commit 推送至远程对应的 `feature/*` 或 `fix/*` 分支；
+    2. **创建 Pull Request**：在 GitHub 上发起指向 `main` 的 PR，附带标准变更说明与测试覆盖指标；
+    3. **CI/CD 自动化校验**：由 GitHub Actions 自动化流水线对 PR 运行全套构建与单元测试，作为云端合并门禁；
+    4. **审查与合并**：由项目负责人审核 PR 并点击 `Merge pull request`，在 `main` 分支上留下清晰的里程碑记录并自动触发生产发布。
